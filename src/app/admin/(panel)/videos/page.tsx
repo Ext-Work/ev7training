@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { PlayCircle, Save, Loader2, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { PlayCircle, Save, Loader2, CheckCircle2, Upload, FileVideo } from 'lucide-react'
 
 interface VideoData {
   id?: string
@@ -15,6 +15,10 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
+  const [copied, setCopied] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchVideo()
@@ -29,6 +33,55 @@ export default function VideosPage() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate on client side too
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
+    if (!allowedTypes.includes(file.type)) {
+      alert('รองรับเฉพาะไฟล์วิดีโอ (MP4, WebM, MOV, AVI)')
+      return
+    }
+
+    if (file.size > 500 * 1024 * 1024) {
+      alert('ไฟล์วิดีโอต้องไม่เกิน 500MB')
+      return
+    }
+
+    setUploading(true)
+    setUploadProgress(`กำลังอัปโหลด ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)...`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/admin/video/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || 'อัปโหลดไม่สำเร็จ')
+        return
+      }
+
+      // Set the URL from S3
+      setVideo(prev => ({ ...prev, url: data.url }))
+      setUploadProgress('✅ อัปโหลดสำเร็จ!')
+      setTimeout(() => setUploadProgress(''), 3000)
+    } catch (err) {
+      console.error(err)
+      alert('เกิดข้อผิดพลาดในการอัปโหลด')
+    } finally {
+      setUploading(false)
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -87,16 +140,64 @@ export default function VideosPage() {
           />
         </div>
 
+        {/* File Upload Section */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">URL วิดีโอ</label>
-          <input
-            type="url"
-            value={video.url}
-            onChange={(e) => setVideo({ ...video, url: e.target.value })}
-            className="input-field"
-            placeholder="https://..."
-          />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">อัปโหลดวิดีโอ</label>
+          <div
+            className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+              uploading ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-ev7-400 hover:bg-gray-50'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="video-upload"
+              disabled={uploading}
+            />
+            {uploading ? (
+              <div className="space-y-2">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto" />
+                <p className="text-sm text-blue-600 font-medium">{uploadProgress}</p>
+              </div>
+            ) : (
+              <label htmlFor="video-upload" className="cursor-pointer space-y-2 block">
+                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto">
+                  <Upload className="w-6 h-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-600 font-medium">คลิกเพื่ออัปโหลดวิดีโอ</p>
+                <p className="text-xs text-gray-400">รองรับ MP4, WebM, MOV, AVI (สูงสุด 500MB)</p>
+              </label>
+            )}
+          </div>
+          {uploadProgress && !uploading && (
+            <p className="text-xs text-green-600 mt-1">{uploadProgress}</p>
+          )}
         </div>
+
+        {/* URL Display */}
+        {video.url && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">URL วิดีโอ</label>
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+              <FileVideo className="w-4 h-4 text-green-500 flex-shrink-0" />
+              <p className="text-sm text-gray-700 break-all flex-1 select-all">{video.url}</p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(video.url)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+                className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
+                title="คัดลอก URL"
+              >
+                {copied ? '✅ คัดลอกแล้ว' : '📋 คัดลอก'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">

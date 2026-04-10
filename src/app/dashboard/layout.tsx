@@ -54,7 +54,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
                 </Link>
               ))}
               <button
-                onClick={() => signOut({ callbackUrl: '/' })}
+                onClick={() => signOut({ redirectTo: '/' })}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 w-full"
               >
                 <LogOut className="w-5 h-5" />
@@ -106,7 +106,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
               </div>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={() => signOut({ redirectTo: '/' })}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 w-full transition-colors"
             >
               <LogOut className="w-5 h-5" />

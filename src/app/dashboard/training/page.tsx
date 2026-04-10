@@ -189,6 +189,7 @@ export default function TrainingPage() {
               key={videoUrl}
               ref={videoRef}
               src={videoUrl}
+              controls
               onLoadedMetadata={handleLoadedMetadata}
               onTimeUpdate={handleTimeUpdate}
               onSeeking={handleSeeking}
@@ -197,24 +198,12 @@ export default function TrainingPage() {
                 setIsPlaying(false)
               }}
               onPlay={() => setIsPlaying(true)}
-              onClick={togglePlay}
-              controlsList="nodownload"
+              controlsList="nodownload nofullscreen"
               disablePictureInPicture
               playsInline
-              className="w-full h-full cursor-pointer"
+              className="w-full h-full"
               style={{ maxHeight: '70vh' }}
             />
-            {/* Custom Play Button Overlay */}
-            {!isPlaying && (
-              <button
-                onClick={togglePlay}
-                className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-all duration-300"
-              >
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md transform transition-transform group-hover:scale-110">
-                  <PlayCircle className="w-12 h-12 text-white" />
-                </div>
-              </button>
-            )}
           </>
         ) : (
           <div className="text-gray-400">กำลังโหลดวิดีโอ...</div>

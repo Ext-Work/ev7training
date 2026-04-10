@@ -4,14 +4,20 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Car, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
+import { Car, AlertCircle, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
   const [nationalId, setNationalId] = useState('')
-  const [dob, setDob] = useState('')
+  const [dob, setDob] = useState('') // raw digits ddmmyyyy
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+
+  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
+    setDob(raw)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,8 +30,23 @@ export default function LoginPage() {
       return
     }
 
-    if (!dob) {
-      setError('กรุณากรอกวันเดือนปีเกิด')
+    if (dob.length !== 8) {
+      setError('กรุณากรอกวันเดือนปีเกิดให้ครบ 8 หลัก เช่น 15032528')
+      setLoading(false)
+      return
+    }
+
+    // Parse ddmmyyyy Buddhist Era -> yyyy-mm-dd Christian Era
+    const dd = dob.slice(0, 2)
+    const mm = dob.slice(2, 4)
+    const buddhistYear = parseInt(dob.slice(4, 8), 10)
+    const christianYear = buddhistYear - 543
+    const isoDate = `${christianYear}-${mm}-${dd}`
+
+    // Validate date
+    const parsed = new Date(isoDate)
+    if (isNaN(parsed.getTime()) || parsed.toISOString().split('T')[0] !== isoDate) {
+      setError('วันเดือนปีเกิดไม่ถูกต้อง')
       setLoading(false)
       return
     }
@@ -33,7 +54,7 @@ export default function LoginPage() {
     try {
       const result = await signIn('driver-login', {
         national_id: nationalId,
-        date_of_birth: dob,
+        date_of_birth: isoDate,
         redirect: false,
       })
 
@@ -98,15 +119,19 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                วันเดือนปีเกิด
+                วันเดือนปีเกิด (พ.ศ.)
               </label>
               <input
-                type="date"
+                type="text"
+                inputMode="numeric"
+                maxLength={8}
+                placeholder="เช่น 15032528"
                 value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                className="input-field"
+                onChange={handleDobChange}
+                className="input-field font-mono text-lg tracking-wider"
                 required
               />
+              <p className="text-xs text-gray-400 mt-1">{dob.length}/8 หลัก (วันเดือนปี พ.ศ.)</p>
             </div>
 
             <button

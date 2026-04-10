@@ -176,6 +176,22 @@ async function main() {
   }
   console.log(`✅ ${drivers.length} demo drivers created`)
 
+  // Display ALL demo driver login credentials (Buddhist Era format)
+  console.log('')
+  console.log('📋 === Demo Driver Login Credentials (ทั้งหมด) ===')
+  console.log('────────────────────────────────────────────────')
+  for (const d of drivers) {
+    const dob = d.date_of_birth
+    const dd = String(dob.getDate()).padStart(2, '0')
+    const mm = String(dob.getMonth() + 1).padStart(2, '0')
+    const buddhistYear = dob.getFullYear() + 543
+    console.log(`👤 ${d.full_name}`)
+    console.log(`   เลขบัตรประชาชน : ${d.national_id}`)
+    console.log(`   วันเกิด (พ.ศ.) : ${dd}/${mm}/${buddhistYear}`)
+    console.log('')
+  }
+  console.log('────────────────────────────────────────────────')
+
   console.log('🎉 Seeding complete!')
 }
 
