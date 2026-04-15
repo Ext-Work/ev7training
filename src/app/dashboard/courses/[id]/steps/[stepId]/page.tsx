@@ -305,29 +305,22 @@ function QuizPlayer({
 
   const fetchQuestions = async () => {
     try {
-      // Fetch ALL master questions (not the old quiz endpoint which pre-slices)
-      const res = await fetch('/api/admin/questions')
-      const data = await res.json()
-      const allQs: QuizQuestion[] = (data.questions || []).map((q: any) => ({
-        id: q.id,
-        question_text: q.question_text,
-        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-      }))
-
       const stepQIds = step.question_ids
         ? (typeof step.question_ids === 'string'
           ? JSON.parse(step.question_ids as unknown as string)
           : step.question_ids)
         : []
 
-      // Filter to only the questions selected for this step
-      let filtered = allQs
-      if (stepQIds.length > 0) {
-        filtered = allQs.filter((q: QuizQuestion) => stepQIds.includes(q.id))
+      if (stepQIds.length === 0) {
+        setQuestions([])
+        setLoadingQ(false)
+        return
       }
 
-      // Use questions in the order admin selected
-      setQuestions(filtered)
+      // Fetch questions by IDs via driver-accessible endpoint
+      const res = await fetch(`/api/driver/questions?ids=${stepQIds.join(',')}`)
+      const data = await res.json()
+      setQuestions(data.questions || [])
     } catch (err) {
       console.error(err)
     } finally {
