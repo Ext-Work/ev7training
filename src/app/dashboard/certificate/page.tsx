@@ -162,15 +162,7 @@ export default function CertificatePage() {
           )}
         </button>
 
-        <a
-          href={`/verify/${cert.certificate_no}`}
-          target="_blank"
-          className="btn-secondary w-full py-3 flex items-center justify-center gap-2"
-        >
-          <QrCode className="w-5 h-5" />
-          ตรวจสอบ Certificate
-          <ExternalLink className="w-4 h-4" />
-        </a>
+
       </div>
     </div>
   )

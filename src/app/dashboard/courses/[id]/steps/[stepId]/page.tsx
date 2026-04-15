@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, PlayCircle, CheckCircle2, AlertTriangle, Loader2,
-  ClipboardCheck, XCircle, Trophy,
+  ClipboardCheck, XCircle, Trophy, ChevronDown, ChevronUp
 } from 'lucide-react'
 import { useModal } from '@/components/ui/ModalProvider'
 
@@ -45,16 +45,25 @@ export default function StepPlayerPage() {
   const stepId = params.stepId as string
 
   const [step, setStep] = useState<StepData | null>(null)
+  const [allSteps, setAllSteps] = useState<StepData[]>([])
   const [loading, setLoading] = useState(true)
+  const [isLastStep, setIsLastStep] = useState(false)
 
   const fetchStep = useCallback(async () => {
     try {
       const res = await fetch(`/api/driver/courses/${courseId}`)
       if (!res.ok) { router.push('/dashboard'); return }
       const data = await res.json()
-      const found = data.steps?.find((s: StepData) => s.id === stepId)
-      if (!found || !found.unlocked) { router.push(`/dashboard/courses/${courseId}`); return }
+      
+      const foundIdx = data.steps?.findIndex((s: StepData) => s.id === stepId)
+      if (foundIdx === undefined || foundIdx === -1) { router.push(`/dashboard/courses/${courseId}`); return }
+      
+      const found = data.steps[foundIdx]
+      if (!found.unlocked) { router.push(`/dashboard/courses/${courseId}`); return }
+      
+      setAllSteps(data.steps)
       setStep(found)
+      setIsLastStep(foundIdx === data.steps.length - 1)
     } catch (err) {
       console.error(err)
     } finally {
@@ -63,6 +72,31 @@ export default function StepPlayerPage() {
   }, [courseId, stepId, router])
 
   useEffect(() => { fetchStep() }, [fetchStep])
+
+  const handleComplete = useCallback(async (autoNext?: boolean) => {
+    if (!autoNext) {
+      fetchStep()
+      return
+    }
+
+    try {
+      setLoading(true)
+      const res = await fetch(`/api/driver/courses/${courseId}`)
+      if (!res.ok) { router.push('/dashboard'); return }
+      const data = await res.json()
+      
+      const currentIndex = data.steps?.findIndex((s: StepData) => s.id === stepId)
+      if (currentIndex !== undefined && currentIndex !== -1 && currentIndex < data.steps.length - 1) {
+        const nextStep = data.steps[currentIndex + 1]
+        router.push(`/dashboard/courses/${courseId}/steps/${nextStep.id}`)
+      } else {
+        router.push(`/dashboard/certificate`)
+      }
+    } catch (err) {
+      console.error(err)
+      fetchStep()
+    }
+  }, [courseId, stepId, router, fetchStep])
 
   if (loading) {
     return (
@@ -78,7 +112,7 @@ export default function StepPlayerPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push(`/dashboard/courses/${courseId}`)}
           className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -91,10 +125,44 @@ export default function StepPlayerPage() {
         </div>
       </div>
 
+      {/* Progress Steps Header */}
+      {allSteps.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">ลำดับการเรียนรู้</span>
+            <span className="text-sm text-gray-500">
+              ขั้นตอนที่ {allSteps.findIndex(s => s.id === step.id) + 1} จาก {allSteps.length}
+            </span>
+          </div>
+          <div className="flex gap-1.5">
+            {allSteps.map(s => {
+              const isCurrent = s.id === step.id
+              const isPast = s.completed
+              const isClickable = s.unlocked && !isCurrent
+              
+              let bgColor = 'bg-gray-200'
+              if (isCurrent) bgColor = 'bg-ev7-500' // Current active
+              else if (isPast) bgColor = 'bg-ev7-300' // Already passed
+              else if (s.unlocked) bgColor = 'bg-gray-300'
+              
+              return (
+                <button 
+                  key={s.id}
+                  title={s.title}
+                  disabled={!isClickable}
+                  onClick={() => router.push(`/dashboard/courses/${courseId}/steps/${s.id}`)}
+                  className={`h-2 flex-1 rounded-full transition-all outline-none ${bgColor} ${isCurrent ? 'scale-y-110 shadow-sm' : ''} ${isClickable ? 'cursor-pointer hover:bg-ev7-400' : 'cursor-not-allowed opacity-60'}`}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {step.step_type === 'VIDEO' ? (
-        <VideoPlayer step={step} courseId={courseId} stepId={stepId} onComplete={fetchStep} />
+        <VideoPlayer step={step} courseId={courseId} stepId={stepId} onComplete={handleComplete} isLastStep={isLastStep} />
       ) : (
-        <QuizPlayer step={step} courseId={courseId} stepId={stepId} onComplete={fetchStep} />
+        <QuizPlayer step={step} courseId={courseId} stepId={stepId} onComplete={handleComplete} isLastStep={isLastStep} />
       )}
     </div>
   )
@@ -106,11 +174,13 @@ function VideoPlayer({
   courseId,
   stepId,
   onComplete,
+  isLastStep,
 }: {
   step: StepData
   courseId: string
   stepId: string
-  onComplete: () => void
+  onComplete: (autoNext?: boolean) => void
+  isLastStep: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [maxWatched, setMaxWatched] = useState(step.max_watched_time || 0)
@@ -197,7 +267,7 @@ function VideoPlayer({
           completed: isCompleted,
         }),
       })
-      if (isCompleted) onComplete()
+      if (isCompleted) onComplete(false)
     } finally {
       setSaving(false)
     }
@@ -269,12 +339,22 @@ function VideoPlayer({
         </div>
 
         {completed && (
-          <div className="mt-4 flex items-center gap-3 bg-ev7-50 rounded-xl p-4">
-            <CheckCircle2 className="w-6 h-6 text-ev7-600" />
-            <div>
-              <p className="font-semibold text-ev7-800">ดูวิดีโอครบแล้ว!</p>
-              <p className="text-sm text-ev7-600">ไปทำขั้นตอนถัดไปได้เลย</p>
+          <div className="mt-4 flex flex-col gap-3 bg-ev7-50 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-6 h-6 text-ev7-600" />
+              <div>
+                <p className="font-semibold text-ev7-800">ดูวิดีโอครบแล้ว!</p>
+                <p className="text-sm text-ev7-600">
+                  {isLastStep ? 'คุณอบรมเสร็จแล้ว' : 'ไปทำขั้นตอนถัดไปได้เลย'}
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => onComplete(true)}
+              className="btn-primary w-full py-2 text-sm mt-1"
+            >
+              {isLastStep ? 'ดูใบประกาศ (กลับสู่หน้าหลัก)' : 'ไปขั้นตอนถัดไป'}
+            </button>
           </div>
         )}
       </div>
@@ -288,11 +368,13 @@ function QuizPlayer({
   courseId,
   stepId,
   onComplete,
+  isLastStep,
 }: {
   step: StepData
   courseId: string
   stepId: string
-  onComplete: () => void
+  onComplete: (autoNext?: boolean) => void
+  isLastStep: boolean
 }) {
   const router = useRouter()
   const modal = useModal()
@@ -303,6 +385,7 @@ function QuizPlayer({
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<QuizResult | null>(null)
   const [reviewQs, setReviewQs] = useState<any[]>([])
+  const [showReview, setShowReview] = useState(false)
 
   useEffect(() => {
     if (step.completed || result?.passed) {
@@ -359,7 +442,7 @@ function QuizPlayer({
       })
       const data = await res.json()
       setResult(data)
-      if (data.passed) onComplete()
+      if (data.passed) onComplete(false)
     } catch (err) {
       console.error(err)
       await modal.alert('เกิดข้อผิดพลาด')
@@ -380,8 +463,25 @@ function QuizPlayer({
           <p className="text-gray-500 mb-2">คะแนน: {displayScore != null ? Math.round(displayScore) : '-'}%</p>
         </div>
 
-        <div className="space-y-6">
-          <h3 className="font-bold text-lg text-gray-900">เฉลยแบบทดสอบ</h3>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <button onClick={() => onComplete(true)} className="btn-primary py-3 px-8 text-sm w-full max-w-sm">
+            {isLastStep ? 'คุณอบรมเสร็จแล้ว ดูใบประกาศ' : 'ไปขั้นตอนถัดไป'}
+          </button>
+          
+          {reviewQs.length > 0 && (
+            <button 
+              onClick={() => setShowReview(!showReview)}
+              className="text-ev7-600 text-sm flex items-center gap-2 hover:underline"
+            >
+              {showReview ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
+              {showReview ? 'ซ่อนเฉลย' : 'ดูเฉลย'}
+            </button>
+          )}
+        </div>
+
+        {showReview && (
+          <div className="space-y-6 mt-8 border-t border-gray-100 pt-8 animate-fade-in">
+            <h3 className="font-bold text-lg text-gray-900">เฉลยแบบทดสอบ</h3>
           {reviewQs.map((q, idx) => (
             <div key={q.id} className="bg-white rounded-2xl p-6 border shadow-sm">
               <p className="font-medium text-gray-900 mb-4 cursor-text select-text">
@@ -414,12 +514,7 @@ function QuizPlayer({
             </div>
           ))}
         </div>
-        
-        <div className="mt-8 flex justify-center">
-           <button onClick={() => router.push('/dashboard')} className="btn-primary py-3 px-8 text-sm">
-            กลับไปหน้าหลักสูตร
-          </button>
-        </div>
+        )}
       </div>
     )
   }
@@ -471,8 +566,19 @@ function QuizPlayer({
         </div>
 
         {/* Answer review */}
-        <div className="mt-8 space-y-3">
-          <h3 className="font-bold text-gray-900">เฉลย</h3>
+        <div className="mt-8 text-center">
+          <button 
+            onClick={() => setShowReview(!showReview)}
+            className="text-ev7-600 text-sm flex items-center gap-2 justify-center mx-auto hover:underline"
+          >
+            {showReview ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
+            {showReview ? 'ซ่อนเฉลย' : 'ดูเฉลย'}
+          </button>
+        </div>
+
+        {showReview && (
+          <div className="mt-6 space-y-3 animate-fade-in">
+            <h3 className="font-bold text-gray-900">เฉลย</h3>
           {result.answers.map((a, i) => (
             <div key={i} className={`p-4 rounded-xl border-2 ${a.is_correct ? 'border-ev7-200 bg-ev7-50' : 'border-red-200 bg-red-50'}`}>
               <div className="flex items-start gap-2">
@@ -491,6 +597,7 @@ function QuizPlayer({
             </div>
           ))}
         </div>
+        )}
       </div>
     )
   }
