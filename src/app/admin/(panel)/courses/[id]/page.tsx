@@ -39,6 +39,7 @@ interface MasterQuestion {
   question_text: string
   options: string[]
   correct_answer: number
+  category?: string | null
   is_active: boolean
   order_num: number
 }
@@ -88,6 +89,7 @@ export default function CourseBuilderPage() {
   const [masterQuestions, setMasterQuestions] = useState<MasterQuestion[]>([])
   const [questionsLoaded, setQuestionsLoaded] = useState(false)
   const [qSearch, setQSearch] = useState('')
+  const [qCategory, setQCategory] = useState('')
 
   const fetchCourse = useCallback(async () => {
     try {
@@ -317,9 +319,14 @@ export default function CourseBuilderPage() {
     }
   }
 
-  const filteredQuestions = masterQuestions.filter(q =>
-    q.is_active && q.question_text.toLowerCase().includes(qSearch.toLowerCase())
-  )
+  const filteredQuestions = masterQuestions.filter(q => {
+    if (!q.is_active) return false
+    if (qCategory && q.category !== qCategory) return false
+    if (qSearch && !q.question_text.toLowerCase().includes(qSearch.toLowerCase())) return false
+    return true
+  })
+
+  const uniqueCategories = Array.from(new Set(masterQuestions.map(q => q.category).filter(Boolean))) as string[]
 
   if (loading) {
     return (
@@ -510,7 +517,10 @@ export default function CourseBuilderPage() {
                         questions={filteredQuestions}
                         selectedIds={editForm.question_ids}
                         qSearch={qSearch}
+                        qCategory={qCategory}
+                        categories={uniqueCategories}
                         onSearchChange={setQSearch}
+                        onCategoryChange={setQCategory}
                         onToggle={(id) => toggleQuestion(id, 'edit')}
                       />
                     )}
@@ -727,7 +737,10 @@ export default function CourseBuilderPage() {
                   questions={filteredQuestions}
                   selectedIds={stepForm.question_ids}
                   qSearch={qSearch}
+                  qCategory={qCategory}
+                  categories={uniqueCategories}
                   onSearchChange={setQSearch}
+                  onCategoryChange={setQCategory}
                   onToggle={(id) => toggleQuestion(id, 'add')}
                 />
               )}
@@ -770,13 +783,19 @@ function QuizSelector({
   questions,
   selectedIds,
   qSearch,
+  qCategory,
+  categories,
   onSearchChange,
+  onCategoryChange,
   onToggle,
 }: {
   questions: MasterQuestion[]
   selectedIds: string[]
   qSearch: string
+  qCategory: string
+  categories: string[]
   onSearchChange: (v: string) => void
+  onCategoryChange: (v: string) => void
   onToggle: (id: string) => void
 }) {
   return (
@@ -785,15 +804,29 @@ function QuizSelector({
         <label className="text-sm font-medium text-gray-700 mb-1 block">
           เลือกคำถามจาก Master ({selectedIds.length} ข้อ)
         </label>
-        <div className="relative mb-2">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={qSearch}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="input-field text-sm pl-9"
-            placeholder="ค้นหาคำถาม..."
-          />
+        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={qSearch}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="input-field text-sm pl-9"
+              placeholder="ค้นหาคำถาม..."
+            />
+          </div>
+          {categories.length > 0 && (
+            <select
+              value={qCategory}
+              onChange={(e) => onCategoryChange(e.target.value)}
+              className="input-field text-sm sm:w-40 bg-white"
+            >
+              <option value="">ทุกหมวดหมู่</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-xl bg-white">
           {questions.length === 0 ? (
@@ -813,7 +846,14 @@ function QuizSelector({
                   className="mt-1 w-4 h-4 rounded accent-ev7-500"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">{q.question_text}</p>
+                  <div className="flex items-center gap-2">
+                    {q.category && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex-shrink-0">
+                        {q.category}
+                      </span>
+                    )}
+                    <p className="text-sm text-gray-900 leading-tight">{q.question_text}</p>
+                  </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(q.options || []).map((opt: string, i: number) => (
                       <span

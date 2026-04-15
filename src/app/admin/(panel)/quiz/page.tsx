@@ -9,6 +9,7 @@ interface Question {
   question_text: string
   options: string[]
   correct_answer: number
+  category?: string | null
   is_active: boolean
   order_num: number
 }
@@ -26,7 +27,9 @@ export default function QuizManagementPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [filterCategory, setFilterCategory] = useState<string>('')
   const [form, setForm] = useState({
+    category: '',
     question_text: '',
     options: ['', '', '', ''],
     correct_answer: 0,
@@ -68,13 +71,14 @@ export default function QuizManagementPage() {
 
     setShowForm(false)
     setEditingId(null)
-    setForm({ question_text: '', options: ['', '', '', ''], correct_answer: 0 })
+    setForm({ category: '', question_text: '', options: ['', '', '', ''], correct_answer: 0 })
     fetchData()
   }
 
   const handleEdit = (q: Question) => {
     const opts = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
     setForm({
+      category: q.category || '',
       question_text: q.question_text,
       options: opts,
       correct_answer: q.correct_answer,
@@ -107,6 +111,9 @@ export default function QuizManagementPage() {
     )
   }
 
+  const uniqueCategories = Array.from(new Set(questions.map(q => q.category).filter(Boolean))) as string[]
+  const filteredQuestions = questions.filter(q => !filterCategory || q.category === filterCategory)
+
   return (
     <>
       <div className="space-y-6 animate-fade-in">
@@ -115,26 +122,39 @@ export default function QuizManagementPage() {
           <h1 className="text-2xl font-bold text-gray-900">จัดการข้อสอบ</h1>
           <p className="text-gray-500 text-sm">{questions.length} คำถาม | ผ่าน {config.pass_score}% | สอบได้ {config.max_attempts} ครั้ง</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ question_text: '', options: ['', '', '', ''], correct_answer: 0 }) }}
-          className="btn-primary text-sm py-2 px-4"
-        >
-          <Plus className="w-4 h-4" />
-          เพิ่มคำถาม
-        </button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {uniqueCategories.length > 0 && (
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="input-field py-2 text-sm w-full sm:w-48 bg-white"
+            >
+              <option value="">ทุกหมวดหมู่</option>
+              {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+          <button
+            onClick={() => { setShowForm(true); setEditingId(null); setForm({ category: '', question_text: '', options: ['', '', '', ''], correct_answer: 0 }) }}
+            className="btn-primary text-sm py-2 px-4 whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            เพิ่มคำถาม
+          </button>
+        </div>
       </div>
 
       {/* Questions List */}
       <div className="space-y-3">
-        {questions.map((q, i) => {
+        {filteredQuestions.map((q, i) => {
           const opts = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
           return (
             <div key={q.id} className={`stat-card p-4 ${!q.is_active ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-gray-400 font-mono">#{i + 1}</span>
+                    <span className="text-xs text-gray-400 font-mono">#{q.order_num > 0 ? q.order_num : (i + 1)}</span>
                     {!q.is_active && <span className="badge badge-gray">ปิดใช้งาน</span>}
+                    {q.category && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">{q.category}</span>}
                   </div>
                   <p className="text-sm font-medium text-gray-900">{q.question_text}</p>
                   <div className="mt-2 grid grid-cols-2 gap-1">
@@ -171,6 +191,24 @@ export default function QuizManagementPage() {
               {editingId ? 'แก้ไขคำถาม' : 'เพิ่มคำถาม'}
             </h2>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">หมวดหมู่</label>
+                <input
+                  type="text"
+                  placeholder="เช่น ความรู้ทั่วไป, ความปลอดภัย (เว้นว่างได้)"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="input-field"
+                  list="category-options"
+                  autoComplete="off"
+                />
+                <datalist id="category-options">
+                  {uniqueCategories.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">คำถาม *</label>
                 <textarea

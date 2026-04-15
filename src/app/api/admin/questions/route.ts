@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { question_text, options, correct_answer } = body
+  const { question_text, options, correct_answer, category } = body
 
   if (!question_text || !options || correct_answer === undefined) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       question_text,
       options,
       correct_answer,
+      category,
       order_num: (maxOrder._max.order_num || 0) + 1,
     },
   })
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const body = await request.json()
-  const { id, question_text, options, correct_answer, is_active } = body
+  const { id, question_text, options, correct_answer, category, is_active } = body
 
   if (!id) {
     return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
@@ -46,6 +47,7 @@ export async function PUT(request: NextRequest) {
       ...(question_text && { question_text }),
       ...(options && { options }),
       ...(correct_answer !== undefined && { correct_answer }),
+      ...(category !== undefined && { category }),
       ...(is_active !== undefined && { is_active }),
     },
   })
