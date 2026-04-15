@@ -41,6 +41,22 @@ export async function POST(
     },
   })
 
+  // Track that the driver has started the course
+  const existingAttempt = await prisma.courseAttempt.findFirst({
+    where: { driver_id: driverId, course_id: courseId }
+  })
+  if (!existingAttempt) {
+    await prisma.courseAttempt.create({
+      data: { driver_id: driverId, course_id: courseId, passed: false, score: 0 }
+    })
+  }
+
+  // Update driver status to WATCHING if they just started
+  await prisma.driver.updateMany({
+    where: { id: driverId, onboarding_status: 'NOT_STARTED' },
+    data: { onboarding_status: 'WATCHING' }
+  })
+
   if (completed) {
     await checkCourseCompletion(courseId, driverId, 100)
   }
@@ -113,6 +129,33 @@ export async function PUT(
       completed: passed,
       score,
     },
+  })
+
+  const existingAttempts = await prisma.quizAttempt.count({ where: { driver_id: driverId } })
+  await prisma.quizAttempt.create({
+    data: {
+      driver_id: driverId,
+      score,
+      passed,
+      attempt_no: existingAttempts + 1,
+      answers: detailedAnswers,
+    },
+  })
+
+  // Track that the driver has started the course (in case it wasn't tracked)
+  const existingAttempt2 = await prisma.courseAttempt.findFirst({
+    where: { driver_id: driverId, course_id: courseId }
+  })
+  if (!existingAttempt2) {
+    await prisma.courseAttempt.create({
+      data: { driver_id: driverId, course_id: courseId, passed: false, score: 0 }
+    })
+  }
+
+  // Update driver status to WATCHING if they just started
+  await prisma.driver.updateMany({
+    where: { id: driverId, onboarding_status: 'NOT_STARTED' },
+    data: { onboarding_status: 'WATCHING' }
   })
 
   if (passed) {

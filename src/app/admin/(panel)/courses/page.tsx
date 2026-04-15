@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Plus, BookOpen, ChevronRight, PlayCircle, ClipboardCheck, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
+import { Plus, BookOpen, ChevronRight, PlayCircle, ClipboardCheck, ToggleLeft, ToggleRight, Loader2, MoreVertical } from 'lucide-react'
+import KebabMenu from './KebabMenu'
 
 interface CourseItem {
   id: string
@@ -148,12 +148,7 @@ export default function CoursesPage() {
                         <ToggleLeft className="w-5 h-5" />
                       )}
                     </button>
-                    <Link
-                      href={`/admin/courses/${course.id}`}
-                      className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-ev7-600"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </Link>
+                    <KebabMenu courseId={course.id} />
                   </div>
                 </div>
               </div>

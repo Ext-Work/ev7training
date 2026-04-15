@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Award, Search, XCircle, AlertCircle } from 'lucide-react'
 import { formatDate, maskNationalId } from '@/lib/utils'
+import { useModal } from '@/components/ui/ModalProvider'
 
 interface Certificate {
   id: string
@@ -19,6 +20,7 @@ interface Certificate {
 }
 
 export default function CertificatesPage() {
+  const modal = useModal()
   const [certs, setCerts] = useState<Certificate[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -41,7 +43,8 @@ export default function CertificatesPage() {
   }
 
   const handleRevoke = async (id: string) => {
-    if (!confirm('ต้องการเพิกถอน Certificate นี้?')) return
+    const isConfirm = await modal.confirm('ต้องการเพิกถอน Certificate นี้?', 'เพิกถอน Certificate')
+    if (!isConfirm) return
     setRevoking(id)
     try {
       await fetch('/api/admin/certificates', {

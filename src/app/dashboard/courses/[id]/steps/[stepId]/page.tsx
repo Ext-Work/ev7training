@@ -6,6 +6,7 @@ import {
   ArrowLeft, PlayCircle, CheckCircle2, AlertTriangle, Loader2,
   ClipboardCheck, XCircle, Trophy,
 } from 'lucide-react'
+import { useModal } from '@/components/ui/ModalProvider'
 
 interface StepData {
   id: string
@@ -39,6 +40,7 @@ interface QuizResult {
 export default function StepPlayerPage() {
   const params = useParams()
   const router = useRouter()
+  const modal = useModal()
   const courseId = params.id as string
   const stepId = params.stepId as string
 
@@ -76,7 +78,7 @@ export default function StepPlayerPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.push(`/dashboard/courses/${courseId}`)}
+          onClick={() => router.push('/dashboard')}
           className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -292,16 +294,27 @@ function QuizPlayer({
   stepId: string
   onComplete: () => void
 }) {
+  const router = useRouter()
+  const modal = useModal()
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [currentQ, setCurrentQ] = useState(0)
   const [loadingQ, setLoadingQ] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<QuizResult | null>(null)
+  const [reviewQs, setReviewQs] = useState<any[]>([])
 
   useEffect(() => {
-    fetchQuestions()
-  }, [])
+    if (step.completed || result?.passed) {
+      fetch(`/api/driver/courses/${courseId}/steps/${stepId}/review`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.questions) setReviewQs(data.questions)
+        })
+    } else {
+      fetchQuestions()
+    }
+  }, [step.completed, result?.passed, courseId, stepId])
 
   const fetchQuestions = async () => {
     try {
@@ -334,7 +347,7 @@ function QuizPlayer({
 
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) {
-      alert('กรุณาตอบคำถามให้ครบทุกข้อ')
+      await modal.alert('กรุณาตอบคำถามให้ครบทุกข้อ')
       return
     }
     setSubmitting(true)
@@ -349,20 +362,64 @@ function QuizPlayer({
       if (data.passed) onComplete()
     } catch (err) {
       console.error(err)
-      alert('เกิดข้อผิดพลาด')
+      await modal.alert('เกิดข้อผิดพลาด')
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (step.completed) {
+  if (step.completed || result?.passed) {
+    const displayScore = result?.passed ? result.score : step.score
     return (
-      <div className="max-w-md mx-auto text-center py-12">
-        <div className="w-20 h-20 rounded-full bg-ev7-100 flex items-center justify-center mx-auto mb-6">
-          <Trophy className="w-10 h-10 text-ev7-600" />
+      <div className="max-w-2xl mx-auto py-8 animate-fade-in">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 rounded-full bg-ev7-100 flex items-center justify-center mx-auto mb-6">
+            <Trophy className="w-10 h-10 text-ev7-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">ผ่านแล้ว!</h2>
+          <p className="text-gray-500 mb-2">คะแนน: {displayScore != null ? Math.round(displayScore) : '-'}%</p>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">ผ่านแล้ว!</h2>
-        <p className="text-gray-500 mb-2">คะแนน: {step.score != null ? Math.round(step.score) : '-'}%</p>
+
+        <div className="space-y-6">
+          <h3 className="font-bold text-lg text-gray-900">เฉลยแบบทดสอบ</h3>
+          {reviewQs.map((q, idx) => (
+            <div key={q.id} className="bg-white rounded-2xl p-6 border shadow-sm">
+              <p className="font-medium text-gray-900 mb-4 cursor-text select-text">
+                {idx + 1}. {q.question_text}
+              </p>
+              <div className="space-y-2">
+                {q.options.map((opt: string, optIdx: number) => {
+                  const isCorrect = q.correct_answer === optIdx
+                  return (
+                    <div
+                      key={optIdx}
+                      className={`p-3 rounded-xl border flex items-center gap-3 ${
+                        isCorrect
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-100 bg-gray-50 opacity-60'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
+                        isCorrect ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {isCorrect && <CheckCircle2 className="w-4 h-4" />}
+                      </div>
+                      <span className={`text-sm select-text ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-600'}`}>
+                        {opt}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-8 flex justify-center">
+           <button onClick={() => router.push('/dashboard')} className="btn-primary py-3 px-8 text-sm">
+            กลับไปหน้าหลักสูตร
+          </button>
+        </div>
       </div>
     )
   }

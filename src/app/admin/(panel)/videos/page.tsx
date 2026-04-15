@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { PlayCircle, Save, Loader2, CheckCircle2, Upload, FileVideo } from 'lucide-react'
+import { useModal } from '@/components/ui/ModalProvider'
 
 interface VideoData {
   id?: string
@@ -11,6 +12,7 @@ interface VideoData {
 }
 
 export default function VideosPage() {
+  const modal = useModal()
   const [video, setVideo] = useState<VideoData>({ title: '', url: '', required_watch_percentage: 95 })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -43,12 +45,12 @@ export default function VideosPage() {
     // Validate on client side too
     const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
     if (!allowedTypes.includes(file.type)) {
-      alert('รองรับเฉพาะไฟล์วิดีโอ (MP4, WebM, MOV, AVI)')
+      await modal.alert('รองรับเฉพาะไฟล์วิดีโอ (MP4, WebM, MOV, AVI)')
       return
     }
 
     if (file.size > 500 * 1024 * 1024) {
-      alert('ไฟล์วิดีโอต้องไม่เกิน 500MB')
+      await modal.alert('ไฟล์วิดีโอต้องไม่เกิน 500MB')
       return
     }
 
@@ -67,7 +69,7 @@ export default function VideosPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert(data.error || 'อัปโหลดไม่สำเร็จ')
+        await modal.alert(data.error || 'อัปโหลดไม่สำเร็จ')
         return
       }
 
@@ -77,7 +79,7 @@ export default function VideosPage() {
       setTimeout(() => setUploadProgress(''), 3000)
     } catch (err) {
       console.error(err)
-      alert('เกิดข้อผิดพลาดในการอัปโหลด')
+      await modal.alert('เกิดข้อผิดพลาดในการอัปโหลด')
     } finally {
       setUploading(false)
       // Reset file input

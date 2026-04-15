@@ -1,11 +1,14 @@
 'use client'
 
 import { SessionProvider } from 'next-auth/react'
+import { ModalProvider } from './ui/ModalProvider'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      {children}
+      <ModalProvider>
+        {children}
+      </ModalProvider>
     </SessionProvider>
   )
 }

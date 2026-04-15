@@ -43,7 +43,7 @@ export default function ImportPage() {
       const rows: PreviewRow[] = json.map((row) => {
         const full_name = String(row['full_name'] || row['ชื่อ-นามสกุล'] || '').trim()
         const national_id = String(row['national_id'] || row['เลขบัตรประชาชน'] || '').replace(/\D/g, '').trim()
-        const dob = row['date_of_birth'] || row['วันเกิด'] || ''
+        const dob = row['วันเกิด (วว/ดด/ปปปป)'] || row['วันเกิด'] || row['date_of_birth'] || ''
         const phone = String(row['phone'] || row['เบอร์โทร'] || '').replace(/\D/g, '').trim()
 
         // Parse date
@@ -51,9 +51,37 @@ export default function ImportPage() {
         if (typeof dob === 'number') {
           // Excel serial date
           const d = XLSX.SSF.parse_date_code(dob)
-          date_of_birth = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
+          const ceYear = d.y > 2400 ? d.y - 543 : d.y
+          date_of_birth = `${ceYear}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
         } else {
-          date_of_birth = String(dob).trim()
+          const dobStr = String(dob).trim()
+          if (dobStr.includes('/')) {
+            const parts = dobStr.split('/')
+            if (parts.length === 3) {
+              const d = parts[0].padStart(2, '0')
+              const m = parts[1].padStart(2, '0')
+              let y = parseInt(parts[2], 10)
+              if (y > 2400) y -= 543
+              date_of_birth = `${y}-${m}-${d}`
+            }
+          } else if (dobStr.includes('-')) {
+            const parts = dobStr.split('-')
+            if (parts.length === 3) {
+              if (parts[0].length === 4) { // yyyy-mm-dd
+                let y = parseInt(parts[0], 10)
+                if (y > 2400) y -= 543
+                date_of_birth = `${y}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
+              } else { // dd-mm-yyyy
+                const d = parts[0].padStart(2, '0')
+                const m = parts[1].padStart(2, '0')
+                let y = parseInt(parts[2], 10)
+                if (y > 2400) y -= 543
+                date_of_birth = `${y}-${m}-${d}`
+              }
+            }
+          } else {
+            date_of_birth = dobStr // fallback
+          }
         }
 
         let valid = true
@@ -61,7 +89,7 @@ export default function ImportPage() {
 
         if (!full_name) { valid = false; error = 'ไม่มีชื่อ' }
         else if (national_id.length !== 13) { valid = false; error = 'เลขบัตรไม่ครบ 13 หลัก' }
-        else if (!date_of_birth) { valid = false; error = 'ไม่มีวันเกิด' }
+        else if (!date_of_birth || isNaN(Date.parse(date_of_birth))) { valid = false; error = 'วันเกิดไม่ถูกต้อง (รูปแบบ วว/ดด/ปปปป)' }
 
         return { full_name, national_id, date_of_birth, phone, valid, error }
       })
@@ -101,9 +129,25 @@ export default function ImportPage() {
         กลับหน้ารายชื่อ
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">นำเข้าจาก Excel</h1>
-        <p className="text-gray-500 text-sm">อัปโหลดไฟล์ .xlsx ที่มีคอลัมน์: full_name, national_id, date_of_birth, phone</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">นำเข้าจาก Excel</h1>
+          <p className="text-gray-500 text-sm">อัปโหลดไฟล์ .xlsx ที่มีคอลัมน์: full_name, national_id, date_of_birth, phone</p>
+        </div>
+        <button
+          onClick={() => {
+            const ws = XLSX.utils.json_to_sheet([
+              { 'ชื่อ-นามสกุล': 'นายทดสอบ สมมติ', 'เลขบัตรประชาชน': '1234567890123', 'วันเกิด (วว/ดด/ปปปป)': '31/01/2533', 'เบอร์โทร': '0812345678' }
+            ])
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, 'Template')
+            XLSX.writeFile(wb, 'driver_import_template.xlsx')
+          }}
+          className="btn-secondary py-2 text-sm whitespace-nowrap"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          ดาวน์โหลด Template
+        </button>
       </div>
 
       {/* Upload Area */}

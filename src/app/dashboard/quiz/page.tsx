@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, XCircle, AlertCircle, Loader2, Lock, Trophy } from 'lucide-react'
+import { useModal } from '@/components/ui/ModalProvider'
 
 interface Question {
   id: string
@@ -19,6 +20,7 @@ interface QuizResult {
 
 export default function QuizPage() {
   const router = useRouter()
+  const modal = useModal()
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,7 @@ export default function QuizPage() {
 
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) {
-      alert('กรุณาตอบคำถามให้ครบทุกข้อ')
+      await modal.alert('กรุณาตอบคำถามให้ครบทุกข้อ')
       return
     }
 
@@ -90,7 +92,7 @@ export default function QuizPage() {
       setResult(data)
     } catch (err) {
       console.error(err)
-      alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      await modal.alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
       setSubmitting(false)
     }

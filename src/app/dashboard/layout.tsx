@@ -8,8 +8,6 @@ import { useState } from 'react'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'แดชบอร์ด' },
-  { href: '/dashboard/training', icon: PlayCircle, label: 'วิดีโออบรม' },
-  { href: '/dashboard/quiz', icon: ClipboardCheck, label: 'แบบทดสอบ' },
   { href: '/dashboard/certificate', icon: Award, label: 'Certificate' },
 ]
 

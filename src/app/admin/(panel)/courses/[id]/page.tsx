@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useModal } from "@/components/ui/ModalProvider"
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   ArrowLeft, Plus, PlayCircle, ClipboardCheck, Trash2, Pencil, Save,
   GripVertical, CheckCircle2, Loader2, ChevronDown, ChevronUp, Search,
@@ -28,6 +30,7 @@ interface CourseData {
   pass_score: number
   is_active: boolean
   steps: CourseStep[]
+  attempts: any[]
   _count: { attempts: number }
 }
 
@@ -44,6 +47,7 @@ export default function CourseBuilderPage() {
   const params = useParams()
   const router = useRouter()
   const courseId = params.id as string
+  const modal = useModal()
 
   const [course, setCourse] = useState<CourseData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -208,13 +212,15 @@ export default function CourseBuilderPage() {
   }
 
   const handleDeleteStep = async (stepId: string) => {
-    if (!confirm('ต้องการลบขั้นตอนนี้?')) return
+    const isConfirm = await modal.confirm('ต้องการลบขั้นตอนนี้?', 'ลบขั้นตอน')
+    if (!isConfirm) return
     await fetch(`/api/admin/courses/${courseId}/steps/${stepId}`, { method: 'DELETE' })
     fetchCourse()
   }
 
   const handleDeleteCourse = async () => {
-    if (!confirm('ต้องการลบหลักสูตรนี้? ข้อมูลทั้งหมดจะถูกลบ')) return
+    const isConfirm = await modal.confirm('ต้องการลบหลักสูตรนี้? ข้อมูลทั้งหมดจะถูกลบ', 'ลบหลักสูตร')
+    if (!isConfirm) return
     await fetch(`/api/admin/courses/${courseId}`, { method: 'DELETE' })
     router.push('/admin/courses')
   }
@@ -267,11 +273,11 @@ export default function CourseBuilderPage() {
   ) => {
     const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
     if (!allowedTypes.includes(file.type)) {
-      alert('รองรับเฉพาะไฟล์วิดีโอ (MP4, WebM, MOV, AVI)')
+      await modal.alert('รองรับเฉพาะไฟล์วิดีโอ (MP4, WebM, MOV, AVI)')
       return
     }
     if (file.size > 500 * 1024 * 1024) {
-      alert('ไฟล์วิดีโอต้องไม่เกิน 500MB')
+      await modal.alert('ไฟล์วิดีโอต้องไม่เกิน 500MB')
       return
     }
 
@@ -290,7 +296,7 @@ export default function CourseBuilderPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert(data.error || 'อัปโหลดไม่สำเร็จ')
+        await modal.alert(data.error || 'อัปโหลดไม่สำเร็จ')
         return
       }
 
@@ -303,7 +309,7 @@ export default function CourseBuilderPage() {
       setTimeout(() => setUploadProgress(''), 3000)
     } catch (err) {
       console.error(err)
-      alert('เกิดข้อผิดพลาดในการอัปโหลด')
+      await modal.alert('เกิดข้อผิดพลาดในการอัปโหลด')
     } finally {
       setUploading(false)
       if (target === 'add' && addFileRef.current) addFileRef.current.value = ''
@@ -743,6 +749,8 @@ export default function CourseBuilderPage() {
           </div>
         )}
       </div>
+
+
 
       {/* Danger Zone */}
       <div className="border border-red-200 rounded-xl p-5 bg-red-50">

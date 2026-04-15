@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { maskNationalId, formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { ArrowLeft, User, PlayCircle, ClipboardCheck, Award, Phone, Calendar, Hash } from 'lucide-react'
+import { ArrowLeft, User, PlayCircle, ClipboardCheck, Award, Phone, Calendar, Hash, BookOpen } from 'lucide-react'
+import DeleteDriverButton from './DeleteDriverButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,8 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
   const driver = await prisma.driver.findUnique({
     where: { id },
     include: {
-      video_progress: { include: { video: true } },
+      course_attempts: { include: { course: true }, orderBy: { created_at: 'desc' } },
+      step_progresses: { include: { step: true } },
       quiz_attempts: { orderBy: { created_at: 'desc' } },
       certificates: { orderBy: { issued_at: 'desc' } },
     },
@@ -26,15 +28,10 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
     )
   }
 
-  const videoProgress = driver.video_progress[0]
-  const videoPct = videoProgress && videoProgress.total_duration > 0
-    ? Math.round((videoProgress.max_watched_time / videoProgress.total_duration) * 100)
-    : 0
-
   const statusBadge = (status: string) => {
     switch (status) {
       case 'NOT_STARTED': return <span className="badge badge-gray">ยังไม่เริ่ม</span>
-      case 'WATCHING': return <span className="badge badge-warning">กำลังดูวิดีโอ</span>
+      case 'WATCHING': return <span className="badge badge-warning">กำลังเรียน</span>
       case 'PASSED': return <span className="badge badge-success">ผ่านการอบรม</span>
       default: return <span className="badge badge-gray">{status}</span>
     }
@@ -49,65 +46,110 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
 
       {/* Profile */}
       <div className="stat-card p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center text-white text-2xl font-bold">
-            {driver.full_name.charAt(0)}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900">{driver.full_name}</h1>
-              {statusBadge(driver.onboarding_status)}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center text-white text-2xl font-bold">
+              {driver.full_name.charAt(0)}
             </div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2 text-gray-500">
-                <Hash className="w-4 h-4" />
-                <span className="font-mono">{driver.national_id}</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl font-bold text-gray-900">{driver.full_name}</h1>
+                {statusBadge(driver.onboarding_status)}
               </div>
-              <div className="flex items-center gap-2 text-gray-500">
-                <Calendar className="w-4 h-4" />
-                {formatDate(driver.date_of_birth)}
-              </div>
-              <div className="flex items-center gap-2 text-gray-500">
-                <Phone className="w-4 h-4" />
-                {driver.phone || '-'}
-              </div>
-              <div className="flex items-center gap-2 text-gray-500">
-                <User className="w-4 h-4" />
-                สร้างเมื่อ {formatDate(driver.created_at)}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Hash className="w-4 h-4" />
+                  <span className="font-mono">{driver.national_id}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(driver.date_of_birth)}
+                </div>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Phone className="w-4 h-4" />
+                  {driver.phone || '-'}
+                </div>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <User className="w-4 h-4" />
+                  สร้างเมื่อ {formatDate(driver.created_at)}
+                </div>
               </div>
             </div>
           </div>
+          {/* Delete Button */}
+          <DeleteDriverButton driverId={driver.id} />
         </div>
       </div>
 
-      {/* Video Progress */}
+      {/* Course Progress */}
       <div className="stat-card p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-            <PlayCircle className="w-5 h-5 text-blue-600" />
+            <BookOpen className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h2 className="font-bold text-gray-900">ความคืบหน้าวิดีโอ</h2>
-            <p className="text-xs text-gray-400">{videoProgress?.completed ? 'ดูครบแล้ว' : 'ยังดูไม่ครบ'}</p>
+            <h2 className="font-bold text-gray-900">หลักสูตรที่เข้าเรียน</h2>
+            <p className="text-xs text-gray-400">{driver.course_attempts.length} ครั้ง</p>
           </div>
         </div>
-        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
-          <div
-            className={`h-full rounded-full ${videoPct >= 95 ? 'bg-ev7-500' : 'bg-blue-500'}`}
-            style={{ width: `${videoPct}%` }}
-          />
-        </div>
-        <p className="text-sm text-gray-500">{videoPct}% จากที่ต้องดู 95%</p>
+        {driver.course_attempts.length === 0 ? (
+          <p className="text-gray-400 text-sm">ยังไม่ได้เข้าเรียนหลักสูตรใดๆ</p>
+        ) : (
+          <div className="space-y-4">
+            {driver.course_attempts.map((attempt: any) => (
+              <div key={attempt.id} className="border border-gray-100 bg-gray-50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-800">{attempt.course.title}</h3>
+                  <span className={`badge ${attempt.passed ? 'badge-success' : 'badge-warning'}`}>
+                    {attempt.passed ? 'ผ่านแล้ว' : 'กำลังเรียน'}
+                  </span>
+                </div>
+                {attempt.score != null && (
+                  <p className="text-sm text-gray-600 mb-3">คะแนนที่ได้: <span className="font-bold text-gray-900">{Math.round(attempt.score)}%</span></p>
+                )}
+                
+                <p className="text-xs font-semibold text-gray-500 mb-2">ความคืบหน้าระดับขั้นตอน (Step Progress):</p>
+                <div className="space-y-2">
+                  {driver.step_progresses
+                    .filter((p: any) => p.step.course_id === attempt.course_id)
+                    .sort((a: any, b: any) => a.step.order_num - b.step.order_num)
+                    .map((p: any) => {
+                      const isVideo = p.step.step_type === 'VIDEO'
+                      const pct = isVideo && p.total_duration > 0
+                        ? Math.round((p.max_watched_time / p.total_duration) * 100)
+                        : null
+                      return (
+                        <div key={p.id} className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100 text-sm">
+                          <span className="text-gray-700 truncate mr-2 flex-1">{p.step.title}</span>
+                          <div className="flex items-center gap-3">
+                            {isVideo && pct !== null && (
+                              <span className="text-xs text-gray-500">ดู {pct}%</span>
+                            )}
+                            {p.step.step_type === 'QUIZ' && p.score != null && (
+                              <span className="text-xs text-gray-500">ได้ {Math.round(p.score)}%</span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                              {p.completed ? 'เสร็จ' : 'กำลังทำ'}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Quiz Attempts */}
+      {/* Quiz Attempts (Legacy / Aggregated) */}
       <div className="stat-card p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
             <ClipboardCheck className="w-5 h-5 text-amber-600" />
           </div>
           <div>
-            <h2 className="font-bold text-gray-900">ประวัติการสอบ</h2>
+            <h2 className="font-bold text-gray-900">ประวัติการสอบย่อย</h2>
             <p className="text-xs text-gray-400">{driver.quiz_attempts.length} ครั้ง</p>
           </div>
         </div>

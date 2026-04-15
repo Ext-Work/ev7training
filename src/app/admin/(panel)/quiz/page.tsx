@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, ClipboardCheck, Loader2, Save, CheckCircle2, X } from 'lucide-react'
+import { useModal } from '@/components/ui/ModalProvider'
 
 interface Question {
   id: string
@@ -19,6 +20,7 @@ interface QuizConfig {
 }
 
 export default function QuizManagementPage() {
+  const modal = useModal()
   const [questions, setQuestions] = useState<Question[]>([])
   const [config, setConfig] = useState<QuizConfig>({ pass_score: 80, max_attempts: 3, num_questions: 10 })
   const [loading, setLoading] = useState(true)
@@ -49,7 +51,7 @@ export default function QuizManagementPage() {
 
   const handleSave = async () => {
     if (!form.question_text || form.options.some(o => !o)) {
-      alert('กรุณากรอกข้อมูลให้ครบ')
+      await modal.alert('กรุณากรอกข้อมูลให้ครบ')
       return
     }
 
@@ -82,7 +84,8 @@ export default function QuizManagementPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('ต้องการลบคำถามนี้?')) return
+    const isConfirm = await modal.confirm('ต้องการลบคำถามนี้?', 'ลบข้อมูล')
+    if (!isConfirm) return
     await fetch(`/api/admin/questions?id=${id}`, { method: 'DELETE' })
     fetchData()
   }

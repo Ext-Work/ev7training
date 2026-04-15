@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Award, Download, QrCode, Loader2, ExternalLink } from 'lucide-react'
 import { formatDate, maskNationalId } from '@/lib/utils'
+import { useModal } from '@/components/ui/ModalProvider'
 
 interface CertData {
   certificate_no: string
@@ -15,6 +16,7 @@ interface CertData {
 
 export default function CertificatePage() {
   const router = useRouter()
+  const modal = useModal()
   const [cert, setCert] = useState<CertData | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
@@ -52,7 +54,7 @@ export default function CertificatePage() {
       }
     } catch (err) {
       console.error(err)
-      alert('เกิดข้อผิดพลาดในการดาวน์โหลด')
+      await modal.alert('เกิดข้อผิดพลาดในการดาวน์โหลด')
     } finally {
       setDownloading(false)
     }

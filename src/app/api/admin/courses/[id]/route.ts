@@ -16,6 +16,10 @@ export async function GET(
           _count: { select: { progress: true } },
         },
       },
+      attempts: {
+        include: { driver: true },
+        orderBy: { created_at: 'desc' },
+      },
       _count: {
         select: { attempts: true },
       },
