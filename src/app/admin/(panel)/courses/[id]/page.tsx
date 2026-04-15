@@ -503,11 +503,9 @@ export default function CourseBuilderPage() {
                       <QuizSelector
                         questions={filteredQuestions}
                         selectedIds={editForm.question_ids}
-                        numQuestions={editForm.num_questions}
                         qSearch={qSearch}
                         onSearchChange={setQSearch}
                         onToggle={(id) => toggleQuestion(id, 'edit')}
-                        onNumChange={(n) => setEditForm({ ...editForm, num_questions: n })}
                       />
                     )}
 
@@ -570,7 +568,6 @@ export default function CourseBuilderPage() {
                         {step.step_type === 'QUIZ' && (
                           <span className="text-xs text-gray-400">
                             {((step.question_ids as string[]) || []).length} คำถาม
-                            {step.num_questions ? ` • สุ่ม ${step.num_questions} ข้อ` : ''}
                           </span>
                         )}
                         {!step.is_required && (
@@ -723,11 +720,9 @@ export default function CourseBuilderPage() {
                 <QuizSelector
                   questions={filteredQuestions}
                   selectedIds={stepForm.question_ids}
-                  numQuestions={stepForm.num_questions}
                   qSearch={qSearch}
                   onSearchChange={setQSearch}
                   onToggle={(id) => toggleQuestion(id, 'add')}
-                  onNumChange={(n) => setStepForm({ ...stepForm, num_questions: n })}
                 />
               )}
 
@@ -766,35 +761,18 @@ export default function CourseBuilderPage() {
 function QuizSelector({
   questions,
   selectedIds,
-  numQuestions,
   qSearch,
   onSearchChange,
   onToggle,
-  onNumChange,
 }: {
   questions: MasterQuestion[]
   selectedIds: string[]
-  numQuestions: number
   qSearch: string
   onSearchChange: (v: string) => void
   onToggle: (id: string) => void
-  onNumChange: (n: number) => void
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <label className="text-sm text-gray-600">จำนวนที่สุ่มออกสอบ:</label>
-        <input
-          type="number"
-          min={1}
-          max={selectedIds.length || 100}
-          value={numQuestions}
-          onChange={(e) => onNumChange(parseInt(e.target.value) || 10)}
-          className="input-field w-20 text-sm"
-        />
-        <span className="text-xs text-gray-400">จากทั้งหมด {selectedIds.length} ข้อที่เลือก</span>
-      </div>
-
       <div>
         <label className="text-sm font-medium text-gray-700 mb-1 block">
           เลือกคำถามจาก Master ({selectedIds.length} ข้อ)
