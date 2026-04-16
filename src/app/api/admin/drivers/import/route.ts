@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
           national_id: d.national_id,
           date_of_birth: new Date(d.date_of_birth),
           phone: d.phone || null,
+          project_type: d.project_type || null,
         },
       })
       success++

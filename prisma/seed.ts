@@ -158,19 +158,33 @@ async function main() {
   }
   console.log(`✅ ${questions.length} questions created`)
 
-  // 5. Create demo drivers
   const drivers = [
-    { full_name: 'สมชาย ใจดี', national_id: '1100100100001', date_of_birth: new Date('1985-03-15'), phone: '0812345678' },
-    { full_name: 'สมหญิง รักเรียน', national_id: '1100100100002', date_of_birth: new Date('1990-07-22'), phone: '0823456789' },
-    { full_name: 'วิชัย เก่งกาจ', national_id: '1100100100003', date_of_birth: new Date('1988-11-30'), phone: '0834567890' },
-    { full_name: 'นภา สว่าง', national_id: '1100100100004', date_of_birth: new Date('1992-01-10'), phone: '0845678901' },
-    { full_name: 'ประเสริฐ มั่นคง', national_id: '1100100100005', date_of_birth: new Date('1980-06-05'), phone: '0856789012' },
+    { full_name: 'สมชาย ใจดี', national_id: '1100100100001', date_of_birth: new Date('1985-03-15'), phone: '0812345678', project_type: 'EV7' },
+    { full_name: 'สมหญิง รักเรียน', national_id: '1100100100002', date_of_birth: new Date('1990-07-22'), phone: '0823456789', project_type: 'GRAB' },
+    { full_name: 'วิชัย เก่งกาจ', national_id: '1100100100003', date_of_birth: new Date('1988-11-30'), phone: '0834567890', project_type: 'Lineman' },
+    { full_name: 'นภา สว่าง', national_id: '1100100100004', date_of_birth: new Date('1992-01-10'), phone: '0845678901', project_type: 'EV7' },
+    { full_name: 'ประเสริฐ มั่นคง', national_id: '1100100100005', date_of_birth: new Date('1980-06-05'), phone: '0856789012', project_type: 'GRAB' },
+    { full_name: 'กิตติพงษ์ สุขสันต์', national_id: '1100100100006', date_of_birth: new Date('1985-04-10'), phone: '0811111111', project_type: 'Lineman' },
+    { full_name: 'อารยา วัฒนไพศาล', national_id: '1100100100007', date_of_birth: new Date('1993-08-25'), phone: '0822222222', project_type: 'EV7' },
+    { full_name: 'ธนวัฒน์ ศรีภูมิ', national_id: '1100100100008', date_of_birth: new Date('1987-12-05'), phone: '0833333333', project_type: 'GRAB' },
+    { full_name: 'พรทิพย์ ใจสว่าง', national_id: '1100100100009', date_of_birth: new Date('1995-02-14'), phone: '0844444444', project_type: 'Lineman' },
+    { full_name: 'สุรศักดิ์ ทวีสิน', national_id: '1100100100010', date_of_birth: new Date('1982-11-20'), phone: '0855555555', project_type: 'EV7' },
+    { full_name: 'มณีรัตน์ ทองแท้', national_id: '1100100100011', date_of_birth: new Date('1989-05-30'), phone: '0866666666', project_type: 'GRAB' },
+    { full_name: 'ศิริชัย ไพบูลย์', national_id: '1100100100012', date_of_birth: new Date('1991-09-18'), phone: '0877777777', project_type: 'Lineman' },
+    { full_name: 'ดารกา เลิศวิวัฒน์', national_id: '1100100100013', date_of_birth: new Date('1984-01-25'), phone: '0888888888', project_type: 'EV7' },
+    { full_name: 'จิรายุส รัตนวิจิตร', national_id: '1100100100014', date_of_birth: new Date('1994-06-12'), phone: '0899999999', project_type: 'GRAB' },
+    { full_name: 'วาสนา แสงทิพย์', national_id: '1100100100015', date_of_birth: new Date('1986-10-09'), phone: '0800000000', project_type: 'Lineman' },
+    { full_name: 'เกรียงไกร พาณิชย์', national_id: '1100100100016', date_of_birth: new Date('1983-03-22'), phone: '0812341234', project_type: 'EV7' },
+    { full_name: 'สุนันทา บุญยงค์', national_id: '1100100100017', date_of_birth: new Date('1990-12-31'), phone: '0823452345', project_type: 'GRAB' },
+    { full_name: 'นภดล สัจจะ', national_id: '1100100100018', date_of_birth: new Date('1988-07-07'), phone: '0834563456', project_type: 'Lineman' },
+    { full_name: 'พิมพา ศรีสุวรรณ', national_id: '1100100100019', date_of_birth: new Date('1992-05-15'), phone: '0845674567', project_type: 'EV7' },
+    { full_name: 'ชาญชัย เจริญพร', national_id: '1100100100020', date_of_birth: new Date('1981-08-08'), phone: '0856785678', project_type: 'GRAB' },
   ]
 
   for (const d of drivers) {
     await prisma.driver.upsert({
       where: { national_id: d.national_id },
-      update: {},
+      update: { project_type: d.project_type },
       create: d,
     })
   }

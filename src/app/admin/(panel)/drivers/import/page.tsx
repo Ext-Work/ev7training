@@ -10,6 +10,7 @@ interface PreviewRow {
   national_id: string
   date_of_birth: string
   phone: string
+  project_type?: string | null
   valid: boolean
   error?: string
 }
@@ -45,6 +46,7 @@ export default function ImportPage() {
         const national_id = String(row['national_id'] || row['เลขบัตรประชาชน'] || '').replace(/\D/g, '').trim()
         const dob = row['วันเกิด (วว/ดด/ปปปป)'] || row['วันเกิด'] || row['date_of_birth'] || ''
         const phone = String(row['phone'] || row['เบอร์โทร'] || '').replace(/\D/g, '').trim()
+        const project_type = String(row['project_type'] || row['ประเภทโครงการ'] || row['โครงการ'] || '').trim() || null
 
         // Parse date
         let date_of_birth = ''
@@ -91,7 +93,7 @@ export default function ImportPage() {
         else if (national_id.length !== 13) { valid = false; error = 'เลขบัตรไม่ครบ 13 หลัก' }
         else if (!date_of_birth || isNaN(Date.parse(date_of_birth))) { valid = false; error = 'วันเกิดไม่ถูกต้อง (รูปแบบ วว/ดด/ปปปป)' }
 
-        return { full_name, national_id, date_of_birth, phone, valid, error }
+        return { full_name, national_id, date_of_birth, phone, project_type, valid, error }
       })
 
       setPreview(rows)
@@ -132,12 +134,12 @@ export default function ImportPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">นำเข้าจาก Excel</h1>
-          <p className="text-gray-500 text-sm">อัปโหลดไฟล์ .xlsx ที่มีคอลัมน์: full_name, national_id, date_of_birth, phone</p>
+          <p className="text-gray-500 text-sm">อัปโหลดไฟล์ .xlsx ที่มีคอลัมน์: ชื่อ-นามสกุล, เลขบัตรประชาชน, วันเกิด (วว/ดด/ปปปป), เบอร์โทร, ประเภทโครงการ (ไม่บังคับ)</p>
         </div>
         <button
           onClick={() => {
             const ws = XLSX.utils.json_to_sheet([
-              { 'ชื่อ-นามสกุล': 'นายทดสอบ สมมติ', 'เลขบัตรประชาชน': '1234567890123', 'วันเกิด (วว/ดด/ปปปป)': '31/01/2533', 'เบอร์โทร': '0812345678' }
+              { 'ชื่อ-นามสกุล': 'นายทดสอบ สมมติ', 'เลขบัตรประชาชน': '1234567890123', 'วันเกิด (วว/ดด/ปปปป)': '31/01/2533', 'เบอร์โทร': '0812345678', 'ประเภทโครงการ': 'EV7' }
             ])
             const wb = XLSX.utils.book_new()
             XLSX.utils.book_append_sheet(wb, ws, 'Template')
@@ -183,6 +185,7 @@ export default function ImportPage() {
                   <th>เลขบัตร</th>
                   <th>วันเกิด</th>
                   <th>เบอร์โทร</th>
+                  <th>โครงการ</th>
                   <th>สถานะ</th>
                 </tr>
               </thead>
@@ -194,6 +197,13 @@ export default function ImportPage() {
                     <td className="font-mono text-sm">{row.national_id || '-'}</td>
                     <td className="text-sm">{row.date_of_birth || '-'}</td>
                     <td className="text-sm">{row.phone || '-'}</td>
+                    <td>
+                      {row.project_type ? (
+                        <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-semibold">{row.project_type}</span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
                     <td>
                       {row.valid ? (
                         <CheckCircle2 className="w-5 h-5 text-ev7-500" />

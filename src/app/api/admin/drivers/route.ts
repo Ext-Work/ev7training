@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       full_name: true,
       national_id: true,
       phone: true,
+      project_type: true,
       status: true,
       onboarding_status: true,
       created_at: true,
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { full_name, national_id, date_of_birth, phone } = body
+  const { full_name, national_id, date_of_birth, phone, project_type } = body
 
   if (!full_name || !national_id || !date_of_birth) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       national_id,
       date_of_birth: new Date(date_of_birth),
       phone: phone || null,
+      project_type: project_type || null,
     },
   })
 

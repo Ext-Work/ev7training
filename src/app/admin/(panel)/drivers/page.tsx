@@ -9,6 +9,7 @@ interface Driver {
   full_name: string
   national_id: string
   phone: string | null
+  project_type: string | null
   status: string
   onboarding_status: string
   created_at: string
@@ -20,7 +21,7 @@ export default function DriversPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [addForm, setAddForm] = useState({ full_name: '', national_id: '', date_of_birth: '', phone: '' })
+  const [addForm, setAddForm] = useState({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
 
@@ -60,7 +61,7 @@ export default function DriversPage() {
         setAddError(data.error || 'เกิดข้อผิดพลาด')
       } else {
         setShowAddModal(false)
-        setAddForm({ full_name: '', national_id: '', date_of_birth: '', phone: '' })
+        setAddForm({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '' })
         fetchDrivers()
       }
     } catch {
@@ -149,6 +150,7 @@ export default function DriversPage() {
                 <th>ชื่อ-นามสกุล</th>
                 <th className="hidden sm:table-cell">เลขบัตรประชาชน</th>
                 <th className="hidden md:table-cell">เบอร์โทร</th>
+                <th>โครงการ</th>
                 <th>สถานะ</th>
                 <th></th>
               </tr>
@@ -159,6 +161,13 @@ export default function DriversPage() {
                   <td className="font-medium">{d.full_name}</td>
                   <td className="hidden sm:table-cell font-mono text-sm">{d.national_id}</td>
                   <td className="hidden md:table-cell text-sm">{d.phone || '-'}</td>
+                  <td>
+                    {d.project_type ? (
+                      <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-semibold">{d.project_type}</span>
+                    ) : (
+                      <span className="text-gray-400 text-sm">-</span>
+                    )}
+                  </td>
                   <td>{statusBadge(d.onboarding_status)}</td>
                   <td>
                     <Link
@@ -227,6 +236,22 @@ export default function DriversPage() {
                   onChange={(e) => setAddForm({ ...addForm, phone: e.target.value.replace(/\D/g, '') })}
                   className="input-field"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">ประเภทโครงการ</label>
+                <input
+                  type="text"
+                  value={addForm.project_type}
+                  onChange={(e) => setAddForm({ ...addForm, project_type: e.target.value })}
+                  className="input-field"
+                  placeholder="เช่น EV7, GRAB, Lineman"
+                  list="project-types"
+                />
+                <datalist id="project-types">
+                  <option value="EV7" />
+                  <option value="GRAB" />
+                  <option value="Lineman" />
+                </datalist>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1 py-3">

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { maskNationalId, formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { ArrowLeft, User, PlayCircle, ClipboardCheck, Award, Phone, Calendar, Hash, BookOpen } from 'lucide-react'
+import { ArrowLeft, User, PlayCircle, ClipboardCheck, Award, Phone, Calendar, Hash, BookOpen, Briefcase } from 'lucide-react'
 import DeleteDriverButton from './DeleteDriverButton'
 
 export const dynamic = 'force-dynamic'
@@ -68,6 +68,10 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
                 <div className="flex items-center gap-2 text-gray-500">
                   <Phone className="w-4 h-4" />
                   {driver.phone || '-'}
+                </div>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Briefcase className="w-4 h-4" />
+                  โครงการ: {driver.project_type || 'ไม่ระบุ'}
                 </div>
                 <div className="flex items-center gap-2 text-gray-500">
                   <User className="w-4 h-4" />
