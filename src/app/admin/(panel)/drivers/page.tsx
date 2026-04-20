@@ -22,6 +22,8 @@ export default function DriversPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addForm, setAddForm] = useState({ full_name: '', national_id: '', date_of_birth: '', phone: '', project_type: '', case_id: '', car_model: '' })
   const [addError, setAddError] = useState('')
@@ -33,15 +35,19 @@ export default function DriversPage() {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (filter !== 'all') params.set('status', filter)
+      params.set('page', page.toString())
+      params.set('limit', '10')
+      
       const res = await fetch(`/api/admin/drivers?${params}`)
       const data = await res.json()
       setDrivers(data.drivers || [])
+      setTotalPages(data.pagination?.totalPages || 1)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [search, filter])
+  }, [search, filter, page])
 
   useEffect(() => {
     const timer = setTimeout(fetchDrivers, 300)
@@ -106,19 +112,25 @@ export default function DriversPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="ค้นหาชื่อหรือเลขบัตรประชาชน..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input-field pl-10"
-          />
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อหรือเลขบัตรประชาชน..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              className="input-field pl-10"
+            />
         </div>
         <div className="flex gap-2">
           {['all', 'NOT_STARTED', 'WATCHING', 'PASSED'].map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f)
+                setPage(1)
+              }}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === f
                   ? 'bg-ev7-500 text-white shadow-sm'
@@ -187,6 +199,54 @@ export default function DriversPage() {
           </table>
         </div>
       )}
+
+      {/* Pagination component */}
+      {!loading && drivers.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-500">
+            แสดงหน้า {page} จากทั้งหมด {totalPages} หน้า
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              ก่อนหน้า
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                if (p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1)) {
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                        page === p
+                          ? 'bg-ev7-500 text-white'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                }
+                if (p === 2 && page > 3) return <span key={p} className="text-gray-400">...</span>;
+                if (p === totalPages - 1 && page < totalPages - 2) return <span key={p} className="text-gray-400">...</span>;
+                return null;
+              })}
+            </div>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              ถัดไป
+            </button>
+          </div>
+        </div>
+      )}
+
       </div>
 
       {/* Add Driver Modal */}

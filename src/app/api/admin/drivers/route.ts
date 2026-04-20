@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const search = searchParams.get('search') || ''
   const status = searchParams.get('status') || ''
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = parseInt(searchParams.get('limit') || '10')
 
   const where: Record<string, unknown> = {}
 
@@ -20,24 +22,31 @@ export async function GET(request: NextRequest) {
     where.onboarding_status = status
   }
 
-  const drivers = await prisma.driver.findMany({
-    where: where as any,
-    orderBy: { created_at: 'desc' },
-    select: {
-      id: true,
-      case_id: true,
-      full_name: true,
-      national_id: true,
-      phone: true,
-      car_model: true,
-      project_type: true,
-      status: true,
-      onboarding_status: true,
-      created_at: true,
-    },
-  })
+  const [drivers, total] = await Promise.all([
+    prisma.driver.findMany({
+      where: where as any,
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        case_id: true,
+        full_name: true,
+        national_id: true,
+        phone: true,
+        car_model: true,
+        project_type: true,
+        status: true,
+        onboarding_status: true,
+        created_at: true,
+      },
+    }),
+    prisma.driver.count({ where: where as any })
+  ])
 
-  return NextResponse.json({ drivers })
+  const totalPages = Math.ceil(total / limit)
+
+  return NextResponse.json({ drivers, pagination: { total, page, limit, totalPages } })
 }
 
 export async function POST(request: NextRequest) {
