@@ -202,23 +202,29 @@ export default function QuizPage() {
         {/* Answer Review */}
         <div className="mt-8 space-y-3">
           <h3 className="font-bold text-gray-900">เฉลย</h3>
-          {result.answers.map((a, i) => (
-            <div key={i} className={`p-4 rounded-xl border-2 ${a.is_correct ? 'border-ev7-200 bg-ev7-50' : 'border-red-200 bg-red-50'}`}>
-              <div className="flex items-start gap-2">
-                {a.is_correct ? (
-                  <CheckCircle2 className="w-5 h-5 text-ev7-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className="text-sm font-medium text-gray-900">ข้อ {i + 1}</p>
-                  {!a.is_correct && (
-                    <p className="text-xs text-gray-500 mt-1">คำตอบที่ถูก: ตัวเลือกที่ {a.correct + 1}</p>
+          {questions.map((q, i) => {
+            const a = result.answers.find(ans => ans.question_id === q.id)
+            if (!a) return null
+            return (
+              <div key={i} className={`p-4 rounded-xl border-2 ${a.is_correct ? 'border-ev7-200 bg-ev7-50' : 'border-red-200 bg-red-50'}`}>
+                <div className="flex items-start gap-2">
+                  {a.is_correct ? (
+                    <CheckCircle2 className="w-5 h-5 text-ev7-600 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                   )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">ข้อ {i + 1}. {q.question_text}</p>
+                    {!a.is_correct && (
+                      <p className="text-sm text-ev7-700 mt-1 font-medium bg-ev7-100 px-2 py-1 rounded inline-block">
+                        คำตอบที่ถูก: {q.options[a.correct]}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
