@@ -24,6 +24,7 @@ interface StepData {
   unlocked: boolean
 }
 
+interface QuizQuestion {
   id: string
   question_text: string
   options: string[]
