@@ -196,6 +196,17 @@ function VideoPlayer({
   const lastSaveRef = useRef(0)
   const requiredPercent = step.video_required_percentage || 95
 
+  // Guard ref to prevent anti-seek infinite loop on slow connections
+  // When we programmatically set currentTime, it fires 'seeking' again — this ref breaks the cycle
+  const isAdjustingRef = useRef(false)
+
+  // Throttle UI updates to reduce re-renders on low-end mobile devices
+  const lastUIUpdateRef = useRef(0)
+
+  // Video loading / error states
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const [buffering, setBuffering] = useState(false)
+
   // Anti-cheat tab switch
   useEffect(() => {
     const handleVisibility = () => {
@@ -212,52 +223,109 @@ function VideoPlayer({
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration)
+      setVideoError(null)
       if (maxWatchedRef.current > 0) {
+        isAdjustingRef.current = true
         videoRef.current.currentTime = Math.min(maxWatchedRef.current, videoRef.current.duration)
+        // Reset guard after browser finishes seeking
+        setTimeout(() => { isAdjustingRef.current = false }, 500)
       }
     }
   }
 
   const handleTimeUpdate = useCallback(() => {
-    if (!videoRef.current) return
+    if (!videoRef.current || isAdjustingRef.current) return
     const ct = videoRef.current.currentTime
     const dur = videoRef.current.duration
 
-    if (ct > maxWatchedRef.current + 2) {
+    // Anti-cheat: prevent forward seeking (tolerance 3s for slow connections)
+    if (ct > maxWatchedRef.current + 3) {
+      isAdjustingRef.current = true
       videoRef.current.currentTime = maxWatchedRef.current
+      setTimeout(() => { isAdjustingRef.current = false }, 300)
       return
     }
 
+    // Update max watched
     if (ct > maxWatchedRef.current) {
       maxWatchedRef.current = ct
       setMaxWatched(ct)
     }
 
-    setCurrentTime(ct)
-    const prog = dur > 0 ? (maxWatchedRef.current / dur) * 100 : 0
-    setProgress(prog)
-
+    // Throttle UI state updates to every 500ms to reduce re-renders on slow devices
     const now = Date.now()
+    if (now - lastUIUpdateRef.current > 500) {
+      lastUIUpdateRef.current = now
+      setCurrentTime(ct)
+      const prog = dur > 0 ? (maxWatchedRef.current / dur) * 100 : 0
+      setProgress(prog)
+    }
+
+    const prog = dur > 0 ? (maxWatchedRef.current / dur) * 100 : 0
+
+    // Auto-save progress every 5 seconds
     if (now - lastSaveRef.current > 5000) {
       lastSaveRef.current = now
       saveProgress(maxWatchedRef.current, dur, prog >= requiredPercent)
     }
 
+    // Check completion
     if (prog >= requiredPercent && !completed) {
       setCompleted(true)
+      setCurrentTime(ct)
+      setProgress(prog)
       saveProgress(maxWatchedRef.current, dur, true)
     }
   }, [completed, requiredPercent])
 
   const handleSeeking = () => {
-    if (!videoRef.current) return
-    if (videoRef.current.currentTime > maxWatchedRef.current + 1) {
+    if (!videoRef.current || isAdjustingRef.current) return
+    if (videoRef.current.currentTime > maxWatchedRef.current + 2) {
+      isAdjustingRef.current = true
       videoRef.current.currentTime = maxWatchedRef.current
+      setTimeout(() => { isAdjustingRef.current = false }, 300)
     }
   }
 
+  // Handle video error — show message instead of black screen
+  const handleVideoError = () => {
+    const video = videoRef.current
+    if (!video?.error) {
+      setVideoError('ไม่สามารถโหลดวิดีโอได้ กรุณาลองใหม่อีกครั้ง')
+      return
+    }
+    switch (video.error.code) {
+      case MediaError.MEDIA_ERR_NETWORK:
+        setVideoError('เครือข่ายมีปัญหา กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองใหม่')
+        break
+      case MediaError.MEDIA_ERR_DECODE:
+      case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+        setVideoError('เบราว์เซอร์ไม่รองรับไฟล์วิดีโอนี้ กรุณาลองเปลี่ยนเบราว์เซอร์ (แนะนำ Chrome)')
+        break
+      default:
+        setVideoError('ไม่สามารถเล่นวิดีโอได้ กรุณาลองใหม่อีกครั้ง')
+    }
+  }
+
+  // Handle buffering state — show loading indicator
+  const handleWaiting = () => setBuffering(true)
+  const handleCanPlay = () => {
+    setBuffering(false)
+    setVideoError(null)
+  }
+
+  const handleRetry = () => {
+    setVideoError(null)
+    setBuffering(false)
+    if (videoRef.current) {
+      videoRef.current.load()
+    }
+  }
+
+  const savingRef = useRef(false)
   const saveProgress = async (watchedTime: number, totalDur: number, isCompleted: boolean) => {
-    if (saving) return
+    if (savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     try {
       await fetch(`/api/driver/courses/${courseId}/steps/${stepId}/progress`, {
@@ -271,6 +339,7 @@ function VideoPlayer({
       })
       if (isCompleted) onComplete(false)
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
@@ -296,22 +365,55 @@ function VideoPlayer({
         </div>
       )}
 
-      <div className="bg-black rounded-2xl overflow-hidden shadow-xl aspect-video flex items-center justify-center">
+      <div className="bg-black rounded-2xl overflow-hidden shadow-xl aspect-video flex items-center justify-center relative">
         {step.video_url ? (
-          <video
-            ref={videoRef}
-            src={step.video_url}
-            controls
-            onLoadedMetadata={handleLoadedMetadata}
-            onTimeUpdate={handleTimeUpdate}
-            onSeeking={handleSeeking}
-            onPause={handlePause}
-            controlsList="nodownload nofullscreen"
-            disablePictureInPicture
-            playsInline
-            className="w-full h-full"
-            style={{ maxHeight: '70vh' }}
-          />
+          <>
+            <video
+              ref={videoRef}
+              src={step.video_url}
+              controls
+              onLoadedMetadata={handleLoadedMetadata}
+              onTimeUpdate={handleTimeUpdate}
+              onSeeking={handleSeeking}
+              onPause={handlePause}
+              onError={handleVideoError}
+              onWaiting={handleWaiting}
+              onCanPlay={handleCanPlay}
+              onPlaying={() => setBuffering(false)}
+              controlsList="nodownload nofullscreen"
+              disablePictureInPicture
+              playsInline
+              preload="auto"
+              className="w-full h-full"
+              style={{ maxHeight: '70vh' }}
+            />
+
+            {/* Buffering overlay */}
+            {buffering && !videoError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none z-10">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-10 h-10 text-white animate-spin" />
+                  <p className="text-white/80 text-sm">กำลังโหลด...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Error overlay */}
+            {videoError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+                <div className="text-center px-6 max-w-sm">
+                  <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+                  <p className="text-white text-sm mb-4">{videoError}</p>
+                  <button
+                    onClick={handleRetry}
+                    className="btn-primary py-2 px-6 text-sm"
+                  >
+                    ลองใหม่
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-gray-400">ยังไม่มี URL วิดีโอ</div>
         )}
@@ -371,6 +473,14 @@ function VideoPlayer({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Note: browser compatibility */}
+      <div className="bg-blue-50 rounded-xl p-4">
+        <h3 className="font-semibold text-blue-900 mb-2 text-sm">📌 หมายเหตุ</h3>
+        <p className="text-xs text-blue-700">
+          หากวิดีโอมีปัญหาในการแสดงผล ให้ลองเปลี่ยนเบราว์เซอร์ (แนะนำ <strong>Google Chrome</strong>) หรือตรวจสอบสัญญาณอินเทอร์เน็ตของท่าน
+        </p>
       </div>
     </>
   )
