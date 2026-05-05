@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, PlayCircle, ClipboardCheck, CheckCircle2, Lock,
-  ChevronRight, BookOpen, Loader2,
+  ChevronRight, PartyPopper, X,
 } from 'lucide-react'
 
 interface StepWithProgress {
@@ -40,6 +40,18 @@ export default function DriverCoursePage() {
 
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showFromBanner, setShowFromBanner] = useState(false)
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('from')) {
+      setShowFromBanner(true)
+      // Clean up ?from= from URL so banner doesn't re-appear on refresh
+      const url = new URL(window.location.href)
+      url.searchParams.delete('from')
+      window.history.replaceState({}, '', url.pathname)
+    }
+  }, [searchParams])
 
   const fetchCourse = useCallback(async () => {
     try {
@@ -96,6 +108,27 @@ export default function DriverCoursePage() {
           {course.description && <p className="text-sm text-gray-500 mt-0.5">{course.description}</p>}
         </div>
       </div>
+
+      {/* Success Banner — coming from previous course */}
+      {showFromBanner && (
+        <div className="relative bg-gradient-to-r from-ev7-500 to-emerald-500 rounded-2xl p-5 text-white shadow-lg animate-fade-in">
+          <button
+            onClick={() => setShowFromBanner(false)}
+            className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+              <PartyPopper className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">🎉 ยินดีด้วย! เรียนจบหลักสูตรก่อนหน้าแล้ว</h3>
+              <p className="text-white/80 text-sm mt-0.5">มาเรียนหลักสูตรนี้กันต่อเลย!</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Progress Card */}
       <div className="gradient-bg rounded-2xl p-6 text-white relative overflow-hidden">

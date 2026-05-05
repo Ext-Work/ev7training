@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ClipboardCheck, Award, ChevronRight, CheckCircle2, Lock, BookOpen, PlayCircle } from 'lucide-react'
+import { ClipboardCheck, ChevronRight, CheckCircle2, Lock, BookOpen, PlayCircle, ArrowRight, Sparkles } from 'lucide-react'
 
 interface ProgressData {
   videoProgress: number
@@ -32,6 +32,7 @@ interface CourseItem {
   completedSteps: number
   totalSteps: number
   courseCompleted: boolean
+  nextCourse: { id: string; title: string } | null
 }
 
 export default function DashboardPage() {
@@ -88,6 +89,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Next Course Navigation Banner */}
+      {(() => {
+        const completedWithNext = courses.find(c => c.courseCompleted && c.nextCourse)
+        if (!completedWithNext || !completedWithNext.nextCourse) return null
+        const nextCourse = completedWithNext.nextCourse
+        return (
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 p-1 animate-fade-in shadow-lg">
+            <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 rounded-xl p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0 shadow-md">
+                  <Sparkles className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-900 text-base">🎉 เรียนจบแล้ว! ยังมีหลักสูตรถัดไปรออยู่</h3>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    กดเพื่อไปเรียน <strong>"{nextCourse.title}"</strong> ต่อเลย เพื่อให้ผ่านเกณฑ์ครบทุกหลักสูตร
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={`/dashboard/courses/${nextCourse.id}`}
+                className="btn-primary w-full py-3 mt-4 text-sm font-semibold flex items-center justify-center gap-2 animate-pulse-glow"
+              >
+                🚀 ไปเรียนหลักสูตรถัดไป: {nextCourse.title}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Multi-Step Courses Section */}
       {courses.length > 0 && (
         <div className="space-y-6">
@@ -125,7 +157,22 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 text-lg">{course.title}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-gray-900 text-lg">{course.title}</h3>
+                      {course.courseCompleted ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-ev7-100 text-ev7-700 font-semibold">
+                          ✅ เรียนจบแล้ว
+                        </span>
+                      ) : pct > 0 ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">
+                          🔵 กำลังเรียน
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">
+                          ยังไม่เริ่ม
+                        </span>
+                      )}
+                    </div>
                     {course.description && (
                       <p className="text-sm text-gray-500 mt-1">{course.description}</p>
                     )}
@@ -210,6 +257,25 @@ export default function DashboardPage() {
                     )
                   })}
                 </div>
+
+                {/* Next Course CTA when this course is completed */}
+                {course.courseCompleted && course.nextCourse && (
+                  <div className="mt-4 border-t border-gray-100 pt-4">
+                    <Link
+                      href={`/dashboard/courses/${course.nextCourse.id}`}
+                      className="flex items-center gap-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl hover:shadow-sm transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                        <ArrowRight className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-amber-900">เรียนหลักสูตรถัดไป</p>
+                        <p className="text-xs text-amber-700 truncate">{course.nextCourse.title}</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
+                )}
               </div>
             )
           })}

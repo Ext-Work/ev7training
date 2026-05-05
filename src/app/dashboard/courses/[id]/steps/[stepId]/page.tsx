@@ -50,6 +50,7 @@ export default function StepPlayerPage() {
   const [allSteps, setAllSteps] = useState<StepData[]>([])
   const [loading, setLoading] = useState(true)
   const [isLastStep, setIsLastStep] = useState(false)
+  const [nextCourse, setNextCourse] = useState<{ id: string; title: string } | null>(null)
 
   const fetchStep = useCallback(async () => {
     try {
@@ -65,7 +66,24 @@ export default function StepPlayerPage() {
       
       setAllSteps(data.steps)
       setStep(found)
-      setIsLastStep(foundIdx === data.steps.length - 1)
+      const lastStep = foundIdx === data.steps.length - 1
+      setIsLastStep(lastStep)
+
+      // Only fetch courses list when at the last step (to determine next course)
+      if (lastStep) {
+        try {
+          const coursesRes = await fetch('/api/driver/courses')
+          if (coursesRes.ok) {
+            const coursesData = await coursesRes.json()
+            const currentCourse = coursesData.courses?.find((c: any) => c.id === courseId)
+            setNextCourse(currentCourse?.nextCourse ?? null)
+          }
+        } catch {
+          // Non-critical — nextCourse banner just won't show
+        }
+      } else {
+        setNextCourse(null)
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -91,14 +109,17 @@ export default function StepPlayerPage() {
       if (currentIndex !== undefined && currentIndex !== -1 && currentIndex < data.steps.length - 1) {
         const nextStep = data.steps[currentIndex + 1]
         router.push(`/dashboard/courses/${courseId}/steps/${nextStep.id}`)
+      } else if (nextCourse) {
+        // Last step — use already-fetched nextCourse instead of re-fetching
+        router.push(`/dashboard/courses/${nextCourse.id}?from=${courseId}`)
       } else {
-        router.push(`/dashboard/certificate`)
+        router.push('/dashboard/certificate')
       }
     } catch (err) {
       console.error(err)
       fetchStep()
     }
-  }, [courseId, stepId, router, fetchStep])
+  }, [courseId, stepId, router, fetchStep, nextCourse])
 
   if (loading) {
     return (
@@ -162,9 +183,9 @@ export default function StepPlayerPage() {
       )}
 
       {step.step_type === 'VIDEO' ? (
-        <VideoPlayer step={step} courseId={courseId} stepId={stepId} onComplete={handleComplete} isLastStep={isLastStep} />
+        <VideoPlayer step={step} courseId={courseId} stepId={stepId} onComplete={handleComplete} isLastStep={isLastStep} nextCourse={nextCourse} />
       ) : (
-        <QuizPlayer step={step} courseId={courseId} stepId={stepId} onComplete={handleComplete} isLastStep={isLastStep} />
+        <QuizPlayer step={step} courseId={courseId} stepId={stepId} onComplete={handleComplete} isLastStep={isLastStep} nextCourse={nextCourse} />
       )}
     </div>
   )
@@ -177,12 +198,14 @@ function VideoPlayer({
   stepId,
   onComplete,
   isLastStep,
+  nextCourse,
 }: {
   step: StepData
   courseId: string
   stepId: string
   onComplete: (autoNext?: boolean) => void
   isLastStep: boolean
+  nextCourse: { id: string; title: string } | null
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [maxWatched, setMaxWatched] = useState(step.max_watched_time || 0)
@@ -443,21 +466,31 @@ function VideoPlayer({
         </div>
 
         {completed && (
-          <div className="mt-4 flex flex-col gap-3 bg-ev7-50 rounded-xl p-4">
+          <div className={`mt-4 flex flex-col gap-3 rounded-xl p-4 ${isLastStep && nextCourse ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200' : 'bg-ev7-50'}`}>
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-6 h-6 text-ev7-600" />
               <div>
                 <p className="font-semibold text-ev7-800">ดูวิดีโอครบแล้ว!</p>
                 <p className="text-sm text-ev7-600">
-                  {isLastStep ? 'คุณอบรมเสร็จแล้ว' : 'ไปทำขั้นตอนถัดไปได้เลย'}
+                  {isLastStep
+                    ? nextCourse
+                      ? `ยินดีด้วย! 🎉 ยังมีหลักสูตรถัดไปรออยู่: "${nextCourse.title}"`
+                      : 'คุณอบรมเสร็จแล้ว'
+                    : 'ไปทำขั้นตอนถัดไปได้เลย'
+                  }
                 </p>
               </div>
             </div>
             <button
               onClick={() => onComplete(true)}
-              className="btn-primary w-full py-2 text-sm mt-1"
+              className={`w-full py-2 text-sm mt-1 ${isLastStep && nextCourse ? 'btn-primary animate-pulse-glow' : 'btn-primary'}`}
             >
-              {isLastStep ? 'ดูใบประกาศ (กลับสู่หน้าหลัก)' : 'ไปขั้นตอนถัดไป'}
+              {isLastStep
+                ? nextCourse
+                  ? `🚀 ไปเรียนหลักสูตรถัดไป: ${nextCourse.title}`
+                  : 'ดูใบประกาศ (กลับสู่หน้าหลัก)'
+                : 'ไปขั้นตอนถัดไป'
+              }
             </button>
           </div>
         )}
@@ -493,12 +526,14 @@ function QuizPlayer({
   stepId,
   onComplete,
   isLastStep,
+  nextCourse,
 }: {
   step: StepData
   courseId: string
   stepId: string
   onComplete: (autoNext?: boolean) => void
   isLastStep: boolean
+  nextCourse: { id: string; title: string } | null
 }) {
   const router = useRouter()
   const modal = useModal()
@@ -593,9 +628,25 @@ function QuizPlayer({
           <p className="text-gray-500 mb-2">คะแนน: {displayScore != null ? Math.round(displayScore) : '-'}%</p>
         </div>
 
+        {isLastStep && nextCourse && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 text-center mb-4">
+            <p className="text-amber-800 text-sm font-medium">
+              🎉 ยินดีด้วย! ยังมีหลักสูตรถัดไปรออยู่: <strong>"{nextCourse.title}"</strong>
+            </p>
+          </div>
+        )}
+
         <div className="mt-8 flex flex-col items-center gap-4">
-          <button onClick={() => onComplete(true)} className="btn-primary py-3 px-8 text-sm w-full max-w-sm">
-            {isLastStep ? 'คุณอบรมเสร็จแล้ว ดูใบประกาศ' : 'ไปขั้นตอนถัดไป'}
+          <button
+            onClick={() => onComplete(true)}
+            className={`py-3 px-8 text-sm w-full max-w-sm ${isLastStep && nextCourse ? 'btn-primary animate-pulse-glow' : 'btn-primary'}`}
+          >
+            {isLastStep
+              ? nextCourse
+                ? `🚀 ไปเรียนหลักสูตรถัดไป: ${nextCourse.title}`
+                : 'คุณอบรมเสร็จแล้ว ดูใบประกาศ'
+              : 'ไปขั้นตอนถัดไป'
+            }
           </button>
           
           {reviewQs.length > 0 && (

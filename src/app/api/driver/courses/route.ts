@@ -55,7 +55,7 @@ export async function GET() {
     const stepsWithProgress = course.steps.map(step => ({
       ...step,
       completed: progressMap.get(step.id)?.completed || false,
-      score: progressMap.get(step.id)?.score || null,
+      score: progressMap.get(step.id)?.score ?? null,
     }))
 
     const requiredSteps = stepsWithProgress.filter(s => s.is_required)
@@ -69,8 +69,24 @@ export async function GET() {
       completedSteps: completedRequired,
       totalSteps: totalRequired,
       courseCompleted,
+      order_num: course.order_num,
     }
   })
 
-  return NextResponse.json({ courses: coursesWithProgress })
+  // Compute nextCourse for each course — the next incomplete course by order
+  const coursesWithNext = coursesWithProgress.map((course, idx) => {
+    const nextIncomplete = coursesWithProgress.find(
+      (c, i) => i > idx && !c.courseCompleted
+    )
+    return {
+      ...course,
+      nextCourse: nextIncomplete
+        ? { id: nextIncomplete.id, title: nextIncomplete.title }
+        : null,
+    }
+  })
+
+  const allCoursesCompleted = coursesWithProgress.every(c => c.courseCompleted)
+
+  return NextResponse.json({ courses: coursesWithNext, allCoursesCompleted })
 }
