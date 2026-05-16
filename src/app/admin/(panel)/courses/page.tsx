@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, BookOpen, ChevronRight, PlayCircle, ClipboardCheck, ToggleLeft, ToggleRight, Loader2, MoreVertical } from 'lucide-react'
+import { Plus, BookOpen, ChevronRight, PlayCircle, ClipboardCheck, ToggleLeft, ToggleRight, Loader2, MoreVertical, X } from 'lucide-react'
 import KebabMenu from './KebabMenu'
 
 interface CourseItem {
@@ -24,6 +24,7 @@ export default function CoursesPage() {
   const [form, setForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '', is_mandatory: true })
   const [creating, setCreating] = useState(false)
   const [carModels, setCarModels] = useState<string[]>([])
+  const [carInput, setCarInput] = useState('')
 
   useEffect(() => {
     fetchCourses()
@@ -64,6 +65,7 @@ export default function CoursesPage() {
       if (res.ok) {
         setShowCreate(false)
         setForm({ title: '', description: '', pass_score: 80, target_car_model: '', is_mandatory: true })
+        setCarInput('')
         fetchCourses()
       }
     } catch (err) {
@@ -155,7 +157,11 @@ export default function CoursesPage() {
                         {course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`}
                       </span>
                       {course.target_car_model && (
-                        <span className="bg-ev7-50 text-ev7-600 px-2 rounded-full font-medium">เฉพาะรุ่น: {course.target_car_model}</span>
+                        <div className="flex gap-1 flex-wrap">
+                          {course.target_car_model.split(',').map(m => m.trim()).filter(Boolean).map(m => (
+                            <span key={m} className="bg-ev7-50 text-ev7-600 px-2 rounded-full font-medium">เฉพาะรุ่น: {m}</span>
+                          ))}
+                        </div>
                       )}
                       <span>{course._count.attempts} ผู้เข้าเรียน</span>
                     </div>
@@ -210,17 +216,64 @@ export default function CoursesPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">รุ่นรถที่กำหนด</label>
-                <input
-                  type="text"
-                  value={form.target_car_model}
-                  onChange={(e) => setForm({ ...form, target_car_model: e.target.value })}
-                  className="input-field"
-                  placeholder="เช่น AION Y PLUS (เว้นว่างไว้หากให้เห็นทุกรุ่น)"
-                  list="car-models-list"
-                />
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {form.target_car_model.split(',').map(m => m.trim()).filter(Boolean).map(m => (
+                    <span key={m} className="bg-ev7-50 border border-ev7-200 text-ev7-600 px-2 py-1 rounded flex items-center gap-1 text-sm">
+                      {m}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = form.target_car_model.split(',').map(x => x.trim()).filter(Boolean)
+                          setForm({ ...form, target_car_model: current.filter(x => x !== m).join(',') })
+                        }}
+                        className="hover:text-ev7-800"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={carInput}
+                    onChange={(e) => setCarInput(e.target.value)}
+                    className="input-field flex-1"
+                    placeholder="เช่น AION Y PLUS (พิมพ์หรือเลือกจากรายการ)"
+                    list="car-models-list"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (carInput.trim()) {
+                          const current = form.target_car_model.split(',').map(x => x.trim()).filter(Boolean)
+                          if (!current.includes(carInput.trim())) {
+                            setForm({ ...form, target_car_model: [...current, carInput.trim()].join(',') })
+                          }
+                          setCarInput('')
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (carInput.trim()) {
+                        const current = form.target_car_model.split(',').map(x => x.trim()).filter(Boolean)
+                        if (!current.includes(carInput.trim())) {
+                          setForm({ ...form, target_car_model: [...current, carInput.trim()].join(',') })
+                        }
+                        setCarInput('')
+                      }
+                    }}
+                    className="btn-secondary px-4 py-2"
+                  >
+                    เพิ่ม
+                  </button>
+                </div>
                 <datalist id="car-models-list">
                   {carModels.map(m => <option key={m} value={m} />)}
                 </datalist>
+                <p className="text-xs text-gray-500 mt-2">เว้นว่างไว้หากให้เห็นทุกรุ่น (สามารถเพิ่มได้หลายรุ่น)</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">คะแนนผ่าน (%)</label>

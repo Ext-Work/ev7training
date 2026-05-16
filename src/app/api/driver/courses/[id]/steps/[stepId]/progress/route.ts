@@ -218,16 +218,18 @@ async function checkCourseCompletion(courseId: string, driverId: string, finalSc
     const driver = await prisma.driver.findUnique({ where: { id: driverId } });
     const driverCarModel = driver?.car_model || null;
 
-    const mandatoryCourses = await prisma.course.findMany({
+    const allMandatoryCourses = await prisma.course.findMany({
       where: {
         is_active: true,
         is_mandatory: true,
-        OR: [
-          { target_car_model: null },      // หลักสูตรสำหรับทุกคน
-          { target_car_model: '' },         // หลักสูตรสำหรับทุกคน (ค่าว่าง)
-          ...(driverCarModel ? [{ target_car_model: driverCarModel }] : []),  // หลักสูตรเฉพาะรุ่นรถ
-        ]
       }
+    });
+
+    const mandatoryCourses = allMandatoryCourses.filter(c => {
+      if (!c.target_car_model) return true;
+      const targets = c.target_car_model.split(',').map(s => s.trim()).filter(Boolean);
+      if (targets.length === 0) return true;
+      return driverCarModel ? targets.includes(driverCarModel) : false;
     });
 
     const passedAttempts = await prisma.courseAttempt.findMany({

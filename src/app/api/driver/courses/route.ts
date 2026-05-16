@@ -17,13 +17,9 @@ export async function GET() {
     select: { car_model: true }
   })
 
-  const courses = await prisma.course.findMany({
+  const allCourses = await prisma.course.findMany({
     where: { 
       is_active: true,
-      OR: [
-        { target_car_model: null },
-        ...(driver?.car_model ? [{ target_car_model: driver.car_model }] : [])
-      ]
     },
     orderBy: { order_num: 'asc' },
     include: {
@@ -39,6 +35,13 @@ export async function GET() {
       },
     },
   })
+
+  const courses = allCourses.filter(c => {
+    if (!c.target_car_model) return true;
+    const targets = c.target_car_model.split(',').map(s => s.trim()).filter(Boolean);
+    if (targets.length === 0) return true;
+    return driver?.car_model ? targets.includes(driver.car_model) : false;
+  });
 
   // Get driver's progress for all steps
   const stepIds = courses.flatMap(c => c.steps.map(s => s.id))

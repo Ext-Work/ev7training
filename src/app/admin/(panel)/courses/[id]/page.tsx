@@ -7,7 +7,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Plus, PlayCircle, ClipboardCheck, Trash2, Pencil, Save,
   GripVertical, CheckCircle2, Loader2, ChevronDown, ChevronUp, Search,
-  Upload, FileVideo,
+  Upload, FileVideo, X,
 } from 'lucide-react'
 
 interface CourseStep {
@@ -83,6 +83,7 @@ export default function CourseBuilderPage() {
   const [editCourseInfo, setEditCourseInfo] = useState(false)
   const [courseForm, setCourseForm] = useState({ title: '', description: '', pass_score: 80, target_car_model: '', is_mandatory: true })
   const [carModels, setCarModels] = useState<string[]>([])
+  const [carInput, setCarInput] = useState('')
 
   // Video upload
   const [uploading, setUploading] = useState(false)
@@ -411,22 +412,70 @@ export default function CourseBuilderPage() {
                   ตั้งเป็นหลักสูตรบังคับเรียน (Mandatory)
                 </label>
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">รุ่นรถเฉพาะ:</label>
-                  <input
-                    type="text"
-                    value={courseForm.target_car_model}
-                    onChange={(e) => setCourseForm({ ...courseForm, target_car_model: e.target.value })}
-                    className="input-field text-sm md:w-48"
-                    placeholder="เว้นว่างถ้าเห็นทุกรุ่น"
-                    list="course-car-models-list"
-                  />
-                  <datalist id="course-car-models-list">
-                    {carModels.map(m => <option key={m} value={m} />)}
-                  </datalist>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                  <div className="flex flex-col gap-2 flex-1">
+                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap">รุ่นรถเฉพาะ (เพิ่มได้หลายรุ่น):</label>
+                    <div className="flex flex-wrap gap-2">
+                      {courseForm.target_car_model.split(',').map(m => m.trim()).filter(Boolean).map(m => (
+                        <span key={m} className="bg-ev7-50 border border-ev7-200 text-ev7-600 px-2 py-1 rounded flex items-center gap-1 text-sm">
+                          {m}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = courseForm.target_car_model.split(',').map(x => x.trim()).filter(Boolean)
+                              setCourseForm({ ...courseForm, target_car_model: current.filter(x => x !== m).join(',') })
+                            }}
+                            className="hover:text-ev7-800"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={carInput}
+                        onChange={(e) => setCarInput(e.target.value)}
+                        className="input-field text-sm flex-1"
+                        placeholder="เว้นว่างถ้าเห็นทุกรุ่น"
+                        list="course-car-models-list"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            if (carInput.trim()) {
+                              const current = courseForm.target_car_model.split(',').map(x => x.trim()).filter(Boolean)
+                              if (!current.includes(carInput.trim())) {
+                                setCourseForm({ ...courseForm, target_car_model: [...current, carInput.trim()].join(',') })
+                              }
+                              setCarInput('')
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (carInput.trim()) {
+                            const current = courseForm.target_car_model.split(',').map(x => x.trim()).filter(Boolean)
+                            if (!current.includes(carInput.trim())) {
+                              setCourseForm({ ...courseForm, target_car_model: [...current, carInput.trim()].join(',') })
+                            }
+                            setCarInput('')
+                          }
+                        }}
+                        className="btn-secondary px-3 py-1.5 text-sm"
+                      >
+                        เพิ่ม
+                      </button>
+                    </div>
+                    <datalist id="course-car-models-list">
+                      {carModels.map(m => <option key={m} value={m} />)}
+                    </datalist>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   <label className="text-sm font-medium text-gray-700 whitespace-nowrap">คะแนนผ่าน:</label>
                 <input
                   type="number"
@@ -470,12 +519,14 @@ export default function CourseBuilderPage() {
                 )}
               </div>
               {course.description && <p className="text-sm text-gray-500 mt-1">{course.description}</p>}
-              <p className="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                {course.target_car_model && <span className="bg-ev7-50 text-ev7-600 px-2 py-0.5 rounded text-[10px] font-bold">เฉพาะ: {course.target_car_model}</span>}
+              <div className="text-xs text-gray-400 mt-2 flex items-center gap-2 flex-wrap">
+                {course.target_car_model && course.target_car_model.split(',').map(m => m.trim()).filter(Boolean).map(m => (
+                  <span key={m} className="bg-ev7-50 text-ev7-600 px-2 py-0.5 rounded text-[10px] font-bold">เฉพาะ: {m}</span>
+                ))}
                 <span>{course.pass_score === 0 ? 'ไม่ต้องสอบ' : `คะแนนผ่าน ${course.pass_score}%`}</span>
                 <span>• {course.steps.length} ขั้นตอน</span>
                 <span>• {course._count.attempts} ผู้เข้าเรียน</span>
-              </p>
+              </div>
             </div>
           )}
         </div>
